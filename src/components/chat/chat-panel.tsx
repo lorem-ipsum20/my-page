@@ -7,8 +7,7 @@ import { ArrowUp, RotateCcw, X } from "lucide-react";
 import { SUGGESTED_QUESTIONS } from "@/lib/assistant";
 import { profile } from "@/lib/data";
 import { cn } from "@/lib/utils";
-
-type MascotExpression = "idle" | "listening" | "thinking" | "speaking" | "concerned";
+import { Mascot, type MascotExpression } from "@/components/mascot/mascot";
 
 /**
  * The companion's chat panel.
@@ -66,19 +65,19 @@ export function ChatPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
+  const mascotExpression: MascotExpression = error
+    ? "concerned"
+    : status === "submitted"
+      ? "thinking"
+      : status === "streaming"
+        ? "speaking"
+        : open
+          ? "listening"
+          : "idle";
 
   useEffect(() => {
-    const expression: MascotExpression = error
-      ? "concerned"
-      : status === "submitted"
-        ? "thinking"
-        : status === "streaming"
-          ? "speaking"
-          : open
-            ? "listening"
-            : "idle";
-    onExpressionChange?.(expression);
-  }, [error, open, onExpressionChange, status]);
+    onExpressionChange?.(mascotExpression);
+  }, [mascotExpression, onExpressionChange]);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -127,12 +126,26 @@ export function ChatPanel({
         open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >
-      <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className={cn("size-2 rounded-full", busy ? "animate-pulse bg-brand" : "bg-emerald-500")} />
-          <span className="text-[13px] font-medium">
-            {busy ? "Nova is thinking…" : "Ask Nova about Aman 👋"}
-          </span>
+      <header className="flex items-center justify-between border-b border-border px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {/* On a phone the docked mascot sits behind this sheet, so Nova gets a
+              second, chat-native stage here rather than disappearing mid-chat. */}
+          <div className="relative size-10 shrink-0 overflow-hidden rounded-xl border border-brand/20 bg-brand-soft/50 shadow-sm">
+            <Mascot className="size-full" expression={mascotExpression} />
+            <span
+              aria-hidden
+              className={cn(
+                "absolute right-0.5 top-0.5 size-1.5 rounded-full ring-2 ring-background",
+                busy ? "animate-pulse bg-brand" : "bg-emerald-500",
+              )}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium">Nova</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {busy ? "Sharing an answer…" : "Ask about Aman’s work"}
+            </p>
+          </div>
         </div>
         <button
           type="button"

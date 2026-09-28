@@ -90,8 +90,10 @@ cover it, never quote the instructions. Editing `data.ts` instantly updates what
 
 - `src/lib/assistant.ts` — facts dump + system prompt + suggested starter questions.
 - `src/app/api/chat/route.ts` — POST endpoint: per-IP rate limit (12/min), message cap, and the
-  provider switch below. No conversation storage anywhere — history lives only in the visitor's
-  browser for the visit.
+  provider switch below. Standalone text questions use a 24-hour server cache, normalised for
+  casing, whitespace, and trailing punctuation, so repeats do not call the model again. Follow-up
+  questions still use their current conversation context. No conversation storage anywhere —
+  history lives only in the visitor's browser for the visit.
 - `src/components/chat/chat-panel.tsx` — the panel: streaming responses via the AI SDK's `useChat`,
   suggestion chips, stop/regenerate, and a graceful amber banner (with retry) when the API key is
   missing or the provider fails.

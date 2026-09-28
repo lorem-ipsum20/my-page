@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="aman" x1="10" y1="6" x2="55" y2="59" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Aman: a simple monogram designed to remain clear at favicon size. -->
+  <rect width="64" height="64" rx="18" fill="url(#aman)"/>
+  <circle cx="13" cy="17" r="3" fill="#fff" opacity=".18"/>
+  <circle cx="52" cy="48" r="5" fill="#fff" opacity=".1"/>
+  <path d="M17 48 28.2 16h7.6L47 48h-7.4l-2.2-7H26.6l-2.2 7H17Zm11.7-13h6.6L32 24.5 28.7 35Z" fill="#fff"/>
+</svg>

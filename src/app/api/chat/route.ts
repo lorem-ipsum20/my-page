@@ -1,5 +1,6 @@
 import {
   convertToModelMessages,
+  createUIMessageStream,
   createUIMessageStreamResponse,
   streamText,
   toUIMessageStream,
@@ -31,6 +32,7 @@ const MAX_MESSAGES = 16;
 
 const RATE_LIMIT_MAX = 12;
 const RATE_LIMIT_WINDOW_MS = 60_000;
+const ANSWER_CACHE_SECONDS = 60 * 60 * 24;
 
 /** Per-instance best effort: enough to stop casual spam, invisible to humans. */
 const hits = new Map<string, number[]>();
@@ -49,6 +51,106 @@ function isRateLimited(key: string) {
 
 function errorResponse(status: number, message: string) {
   return Response.json({ error: message }, { status });
+}
+
+function openRouterHeaders(apiKey: string) {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    // These are optional attribution headers. Header values must be latin-1,
+    // so no em dashes here.
+    "HTTP-Referer": process.env.SITE_URL ?? "https://amansinganamala.vercel.app",
+    "X-OpenRouter-Title": "Aman Singanamala - Portfolio",
+  };
+}
+
+/**
+ * Cache only a standalone text question. Follow-ups can rely on earlier turns,
+ * so reusing an answer for them would be incorrect. Case, whitespace, and a
+ * trailing question mark do not create duplicate cache entries.
+ */
+function getCacheableQuestion(messages: UIMessage[]) {
+  if (messages.length !== 1 || messages[0].role !== "user") return null;
+
+  const parts = messages[0].parts;
+  type TextPart = Extract<(typeof parts)[number], { type: "text" }>;
+  const textParts = parts.filter((part): part is TextPart => part.type === "text");
+  if (textParts.length === 0 || textParts.length !== parts.length) return null;
+
+  const question = textParts.map((part) => part.text).join(" ").trim();
+  if (!question) return null;
+
+  return question
+    .toLocaleLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[?!.,]+$/, "");
+}
+
+function cachedTextResponse(text: string) {
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      writer.write({ type: "start" });
+      writer.write({ type: "start-step" });
+      writer.write({ type: "text-start", id: "text-1" });
+      writer.write({ type: "text-delta", id: "text-1", delta: text });
+      writer.write({ type: "text-end", id: "text-1" });
+      writer.write({ type: "finish-step" });
+      writer.write({ type: "finish", finishReason: "stop" });
+      writer.setOutcome({ status: "completed" });
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    stream,
+    headers: { "X-Nova-Cache": "cached-answer" },
+  });
+}
+
+type OpenRouterCompletion = {
+  choices?: Array<{ message?: { content?: string | Array<{ text?: string }> } }>;
+};
+
+function completionText(payload: OpenRouterCompletion) {
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) return content.map((part) => part.text ?? "").join("").trim();
+  return "";
+}
+
+async function getCachedAnswer({
+  apiKey,
+  modelId,
+  question,
+}: {
+  apiKey: string;
+  modelId: string;
+  question: string;
+}) {
+  // Next caches this POST by its URL, headers, and body. The body includes the
+  // model, canonical question, and complete portfolio prompt, so an updated
+  // profile or a changed model naturally gets its own cache entry.
+  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: openRouterHeaders(apiKey),
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        { role: "system", content: ASSISTANT_SYSTEM_PROMPT },
+        { role: "user", content: question },
+      ],
+      temperature: 0.3,
+      max_tokens: 2048,
+    }),
+    cache: "force-cache",
+    next: { revalidate: ANSWER_CACHE_SECONDS },
+    signal: AbortSignal.timeout(25_000),
+  });
+
+  if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
+
+  const text = completionText((await response.json()) as OpenRouterCompletion);
+  if (!text) throw new Error("OpenRouter returned an empty answer");
+  return text;
 }
 
 export async function POST(req: Request) {
@@ -77,17 +179,31 @@ export async function POST(req: Request) {
     );
   }
 
+  const modelId = process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL;
+  const cacheableQuestion = getCacheableQuestion(messages);
+  if (cacheableQuestion) {
+    try {
+      return cachedTextResponse(
+        await getCachedAnswer({
+          apiKey: openRouterKey,
+          modelId,
+          question: cacheableQuestion,
+        }),
+      );
+    } catch {
+      return errorResponse(502, "Nova couldn't reach her answer service. Please try again.");
+    }
+  }
+
   const model = createOpenAICompatible({
     name: "openrouter",
     baseURL: OPENROUTER_BASE_URL,
     apiKey: openRouterKey,
     headers: {
-      // Optional OpenRouter attribution headers (site rankings). Header values
-      // must be latin-1, so no em dashes here.
       "HTTP-Referer": process.env.SITE_URL ?? "https://amansinganamala.vercel.app",
       "X-OpenRouter-Title": "Aman Singanamala - Portfolio",
     },
-  }).chatModel(process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL);
+  }).chatModel(modelId);
 
   const result = streamText({
     model,
