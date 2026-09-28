@@ -76,6 +76,11 @@ photo.
 Everything lives in **`src/lib/data.ts`**:
 
 - `profile` — name, role, tagline, summaries, location, avatar, résumé link
+- `socials` — GitHub, LeetCode, LinkedIn, Medium, X, email
+- `experience` — UBS full-time + internship, with the résumé bullets
+- `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps
+- `posts` — the 8 Medium articles from `medium.com/@embed17`
+- `skillGroups`, `certifications`, `education`, `awards`, `interests`
 
 ### Updating the résumé (no redeploy)
 
@@ -90,17 +95,11 @@ on GitHub, delete the old asset, upload the new PDF **with the exact same filena
 The site picks it up on the next download — no commit, no deploy, doable from a phone.
 The release must stay the latest one, and the repo must stay public for the link to work
 anonymously.
-- `socials` — GitHub, LeetCode, LinkedIn, Medium, X, email
-- `experience` — UBS full-time + internship, with the résumé bullets
-- `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps
-- `posts` — the 8 Medium articles from `medium.com/@embed17`
-- `skillGroups`, `certifications`, `education`, `awards`, `interests`
 
 ### Known gaps to fill in
 
-`projects[0].demoUrl` and `projects[0].repoUrl` (DSA Lab) are `null` — no public URL was found.
-The project renders a "Private repository" note instead of broken buttons. Fill these in when the
-links exist.
+`projects[0].repoUrl` (DSA Lab) is `null` — the source is private, so the card shows its live
+demo link alongside a "Private repository" note. Fill in a public repo URL if one ever exists.
 
 ## Theming
 
