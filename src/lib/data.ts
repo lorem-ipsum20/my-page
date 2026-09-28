@@ -180,7 +180,7 @@ export const projects: Project[] = [
       "NVIDIA NIM",
       "Vercel",
     ],
-    demoUrl: null,
+    demoUrl: "https://codevisualizer.vercel.app/",
     repoUrl: null,
     accent: "emerald",
   },
