@@ -1,4 +1,4 @@
-import { ArrowUpRight, Download, Phone } from "lucide-react";
+import { ArrowUpRight, Download, FileText, Phone } from "lucide-react";
 import { profile, socials } from "@/lib/data";
 import { socialIconMap } from "@/components/icons";
 import { Reveal } from "@/components/reveal";
@@ -41,6 +41,15 @@ export function Contact() {
             >
               <Download className="size-3.5" />
               Download résumé
+            </Button>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              className="rounded-full transition-transform duration-200 hover:-translate-y-0.5"
+              render={<a href="/resume" />}
+            >
+              <FileText className="size-3.5" />
+              Preview résumé
             </Button>
             <Button
               variant="outline"

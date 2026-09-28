@@ -1,4 +1,4 @@
-import { ArrowUpRight, Download, MapPin } from "lucide-react";
+import { ArrowUpRight, FileText, MapPin } from "lucide-react";
 import { profile, socials } from "@/lib/data";
 import { socialIconMap } from "@/components/icons";
 import { MascotCompanion } from "@/components/mascot/companion";
@@ -61,9 +61,9 @@ export function Hero() {
           <Button
             nativeButton={false}
             className="rounded-full transition-transform duration-200 hover:-translate-y-0.5"
-            render={<a href={profile.resumeUrl} target="_blank" rel="noreferrer" />}
+            render={<a href="/resume" />}
           >
-            <Download className="size-3.5" />
+            <FileText className="size-3.5" />
             Résumé
           </Button>
           <Button
