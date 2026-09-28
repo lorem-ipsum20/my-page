@@ -5,6 +5,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
+import type { Metadata } from "next";
 import {
   awards,
   certifications,
@@ -20,6 +21,12 @@ import { socialIconMap } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "@/components/resume/print-button";
 
+export const metadata: Metadata = {
+  title: "Résumé — Aman Singanamala",
+  description:
+    "The on-site résumé of Aman Singanamala: experience, projects, skills and education, rendered live from the same source as the portfolio — print it or save it as PDF.",
+};
+
 /**
  * The on-site résumé.
  *
@@ -32,12 +39,6 @@ import { PrintButton } from "@/components/resume/print-button";
  * margins. Print styles in globals.css force a plain black-on-white sheet
  * regardless of theme.
  */
-export const metadata = {
-  title: "Résumé — Aman Singanamala",
-  description:
-    "The résumé of Aman Singanamala, full stack software developer — experience, projects, skills and education, rendered live from the same data as the site.",
-};
-
 const formatDate = (iso: string) => {
   const [year, month] = iso.split("-");
   const names = [

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +21,7 @@ const description =
   "Full Stack Software Developer building scalable, secure web applications with React, Spring Boot, Java and Azure. Writing about authentication, state management and LLM tooling.";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title,
   description,
   authors: [{ name: "Aman Singanamala" }],
@@ -35,10 +37,18 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
     locale: "en_IN",
   },
-  twitter: { card: "summary_large_image", title, description },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    site: "@amans3103",
+    creator: "@amans3103",
+  },
 };
 
 export default function RootLayout({
