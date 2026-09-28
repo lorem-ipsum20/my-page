@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useReducedMotion } from "motion/react";
-import { createMascot, MASCOT_PALETTES, type MascotHandle } from "./character";
+import {
+  createMascot,
+  MASCOT_PALETTES,
+  type MascotExpression,
+  type MascotHandle,
+} from "./character";
 import { cn } from "@/lib/utils";
 
 type LoopControls = {
@@ -27,12 +32,12 @@ export function MascotCanvas({
   className,
   fallbackSrc,
   fallbackAlt = "",
-  thinking = false,
+  expression = "idle",
 }: {
   className?: string;
   fallbackSrc?: string;
   fallbackAlt?: string;
-  thinking?: boolean;
+  expression?: MascotExpression;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<MascotHandle | null>(null);
@@ -251,13 +256,12 @@ export function MascotCanvas({
     if (reduceMotionRef.current) controlsRef.current?.renderOnce();
   }, [palette]);
 
-  // The thinking look is a scene flag, not a rebuild: the antenna pulses and
-  // the eyes widen for as long as the chat is open, in both loop and
-  // reduced-motion rendering.
+  // Expressions are scene flags, not rebuilds. This keeps the transition from
+  // listening to thinking to speaking fluid while an answer streams.
   useEffect(() => {
-    handleRef.current?.setThinking(thinking);
+    handleRef.current?.setExpression(expression);
     if (reduceMotionRef.current) controlsRef.current?.renderOnce();
-  }, [thinking]);
+  }, [expression]);
 
   // Toggling the OS motion preference updates the live scene in place.
   useEffect(() => {

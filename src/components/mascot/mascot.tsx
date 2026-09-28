@@ -1,6 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { MascotExpression } from "./character";
+
+export type { MascotExpression } from "./character";
 
 /**
  * `ssr: false` is what actually keeps `three` out of the initial HTML — a plain
@@ -19,8 +22,8 @@ export function Mascot(props: {
   className?: string;
   fallbackSrc?: string;
   fallbackAlt?: string;
-  /** Shows the "composing an answer" antenna pulse while the chat is streaming. */
-  thinking?: boolean;
+  /** The chat lifecycle drives Nova's face and gestures. */
+  expression?: MascotExpression;
 }) {
   return <MascotCanvas {...props} />;
 }

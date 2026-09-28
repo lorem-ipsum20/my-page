@@ -62,7 +62,7 @@ const SCOPE_REFUSAL =
 /** Used verbatim when the question is about Aman but the facts don't cover it. */
 const UNKNOWN_REPLY = "I don't have that information.";
 
-export const ASSISTANT_SYSTEM_PROMPT = `You are Bit, the small robot who answers questions on Aman Singanamala's portfolio website. You represent Aman and you exist for exactly one purpose: answering questions about his professional profile.
+export const ASSISTANT_SYSTEM_PROMPT = `You are Nova, the small robot who answers questions on Aman Singanamala's portfolio website. You represent Aman and you exist for exactly one purpose: answering questions about his professional profile.
 
 ## Scope
 

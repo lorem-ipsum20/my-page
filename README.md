@@ -73,9 +73,9 @@ chunk appeared in the initial document. `dynamic(..., { ssr: false })` is what a
 The character replaced the small round avatar image in the hero, so the hero no longer shows a
 photo.
 
-## Ask Bit — the portfolio assistant
+## Ask Nova — the portfolio assistant
 
-Tapping the companion opens a small chat panel: **Bit answers questions about Aman and nothing
+Tapping the companion opens a small chat panel: **Nova answers questions about Aman and nothing
 else**. Recruiters can ask about experience, projects or contact details without reading the whole
 page.
 
@@ -84,7 +84,7 @@ page.
 The entire knowledge base is `src/lib/data.ts` serialized into the system prompt (a few KB, so it
 fits whole — no embeddings, no vector store, no RAG). `src/lib/assistant.ts` builds that prompt,
 plus strict rules: third person only, refuse anything not about Aman, admit when the facts don't
-cover it, never quote the instructions. Editing `data.ts` instantly updates what Bit knows.
+cover it, never quote the instructions. Editing `data.ts` instantly updates what Nova knows.
 
 ### Anatomy
 
@@ -101,7 +101,7 @@ cover it, never quote the instructions. Editing `data.ts` instantly updates what
 
 ### Choosing a provider (env vars, no code change)
 
-Bit runs through [OpenRouter](https://openrouter.ai), which uses an OpenAI-compatible chat
+Nova runs through [OpenRouter](https://openrouter.ai), which uses an OpenAI-compatible chat
 endpoint. Set these in Vercel under Project → Settings → Environment Variables:
 
 1. `OPENROUTER_API_KEY` — required; create one at [OpenRouter Keys](https://openrouter.ai/keys).
@@ -113,7 +113,7 @@ endpoint. Set these in Vercel under Project → Settings → Environment Variabl
 3. `SITE_URL` — optional; the public deployment URL used for OpenRouter app attribution. It
    defaults to the portfolio's production URL.
 
-Without the key, the site still builds and deploys — Bit just apologises that it isn't
+Without the key, the site still builds and deploys — Nova just apologises that it isn't
 connected yet. Model IDs live in `src/app/api/chat/route.ts` if you ever want to swap them.
 
 ## Content

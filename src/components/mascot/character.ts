@@ -50,14 +50,16 @@ export type MascotFrame = {
   wave?: boolean;
 };
 
+/** Small, readable states that map directly to the chat's lifecycle. */
+export type MascotExpression = "idle" | "listening" | "thinking" | "speaking" | "concerned";
+
 export type MascotHandle = {
   canvas: HTMLCanvasElement;
   render: (frame: MascotFrame) => void;
   setSize: (width: number, height: number) => void;
   setPalette: (palette: MascotPalette) => void;
   setReduceMotion: (reduce: boolean) => void;
-  /** While true the antenna pulses hard and the eyes widen — the "thinking" look. */
-  setThinking: (thinking: boolean) => void;
+  setExpression: (expression: MascotExpression) => void;
   dispose: () => void;
 };
 
@@ -239,6 +241,51 @@ export function createMascot(): MascotHandle {
     pivot.add(highlight);
   }
 
+  // A friendly, curved smile keeps Nova welcoming even when the chat is closed.
+  // It is a real 3D stroke rather than a texture, so it stays crisp at both the
+  // hero and docked sizes. While speaking, a small open mouth appears behind it
+  // and the smile bounces with the conversation.
+  const smileCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-0.135, -0.115, 0.442),
+    new THREE.Vector3(0, -0.225, 0.472),
+    new THREE.Vector3(0.135, -0.115, 0.442),
+  );
+  const smile = new THREE.Mesh(
+    track(new THREE.TubeGeometry(smileCurve, 20, 0.02, 8, false)),
+    eyeMaterial,
+  );
+  bodyPivot.add(smile);
+
+  // Rounded smile corners keep the grin legible at thumbnail size instead of
+  // reading like a thin technical line.
+  for (const side of [-1, 1] as const) {
+    const dimple = new THREE.Mesh(
+      track(new THREE.SphereGeometry(0.021, 12, 10)),
+      eyeMaterial,
+    );
+    dimple.position.set(side * 0.135, -0.115, 0.442);
+    bodyPivot.add(dimple);
+  }
+
+  const talkingMouth = new THREE.Mesh(
+    track(new THREE.SphereGeometry(0.105, 18, 12)),
+    eyeMaterial,
+  );
+  talkingMouth.position.set(0, -0.155, 0.43);
+  talkingMouth.scale.set(0.72, 0.001, 0.18);
+  bodyPivot.add(talkingMouth);
+
+  const cheekLights = [-1, 1].map((side) => {
+    const cheek = new THREE.Mesh(
+      track(new THREE.SphereGeometry(0.038, 14, 10)),
+      accentMaterial,
+    );
+    cheek.position.set(side * 0.29, -0.105, 0.405);
+    cheek.scale.setScalar(0.001);
+    bodyPivot.add(cheek);
+    return cheek;
+  });
+
   // ---- Antenna --------------------------------------------------------------
   const antennaPivot = new THREE.Group();
   antennaPivot.position.set(0, 0.5, 0);
@@ -309,7 +356,7 @@ export function createMascot(): MascotHandle {
   let waveStartedAt = -1;
   let waveLift = 0;
   let waveWobble = 0;
-  let thinking = false;
+  let expression: MascotExpression = "idle";
 
   const setEyeScaleY = (scale: number) => {
     const clamped = clamp(scale, 0, 1.6);
@@ -318,17 +365,37 @@ export function createMascot(): MascotHandle {
   };
 
   const settlePose = (delta: number) => {
+    const isListening = expression === "listening";
+    const isThinking = expression === "thinking";
+    const isSpeaking = expression === "speaking";
+    const isConcerned = expression === "concerned";
+
     root.position.y = damp(root.position.y, 0, 6, delta);
-    root.rotation.z = damp(root.rotation.z, 0, 6, delta);
+    root.rotation.z = damp(root.rotation.z, isListening ? -0.07 : isConcerned ? 0.07 : 0, 6, delta);
     root.rotation.y = damp(root.rotation.y, 0.14, 6, delta);
-    root.rotation.x = damp(root.rotation.x, 0, 6, delta);
+    root.rotation.x = damp(root.rotation.x, isThinking ? 0.08 : 0, 6, delta);
     bodyPivot.scale.y = damp(bodyPivot.scale.y, 1, 6, delta);
-    armPivots[0].rotation.z = damp(armPivots[0].rotation.z, -ARM_REST_ANGLE, 6, delta);
-    armPivots[1].rotation.z = damp(armPivots[1].rotation.z, ARM_REST_ANGLE, 6, delta);
-    antennaGlow.scale.setScalar(damp(antennaGlow.scale.x, 1, 6, delta));
+    armPivots[0].rotation.z = damp(
+      armPivots[0].rotation.z,
+      -ARM_REST_ANGLE + (isListening ? 0.16 : isThinking ? 0.24 : 0),
+      6,
+      delta,
+    );
+    armPivots[1].rotation.z = damp(
+      armPivots[1].rotation.z,
+      ARM_REST_ANGLE + (isThinking ? -0.24 : isConcerned ? 0.16 : 0),
+      6,
+      delta,
+    );
+    antennaGlow.scale.setScalar(damp(antennaGlow.scale.x, isThinking ? 1.3 : 1.08, 6, delta));
     eyePivot.position.x = damp(eyePivot.position.x, 0, 6, delta);
     eyePivot.position.y = damp(eyePivot.position.y, 0, 6, delta);
-    setEyeScaleY(damp(eyeLeft.scale.y, 1, 6, delta));
+    setEyeScaleY(damp(eyeLeft.scale.y, isThinking ? 1.14 : isListening ? 1.06 : 1, 6, delta));
+    smile.scale.y = damp(smile.scale.y, isSpeaking ? 0.72 : isConcerned ? 0.45 : 1, 6, delta);
+    talkingMouth.scale.y = damp(talkingMouth.scale.y, isSpeaking ? 0.7 : 0.001, 6, delta);
+    for (const cheek of cheekLights) {
+      cheek.scale.setScalar(damp(cheek.scale.x, isSpeaking ? 1 : 0.001, 6, delta));
+    }
   };
 
   const renderFrame = (frame: MascotFrame) => {
@@ -336,12 +403,15 @@ export function createMascot(): MascotHandle {
 
     if (reduceMotion) {
       settlePose(delta);
-      // No animation is allowed, but the thinking state must still read: the
-      // glow holds a single enlarged size instead of pulsing.
-      if (thinking) antennaGlow.scale.setScalar(1.3);
+      // No animation is allowed, but the selected expression remains readable.
       renderer.render(scene, camera);
       return;
     }
+
+    const isListening = expression === "listening";
+    const isThinking = expression === "thinking";
+    const isSpeaking = expression === "speaking";
+    const isConcerned = expression === "concerned";
 
     pointerSmooth.x = damp(pointerSmooth.x, pointer.x, 3.4, delta);
     pointerSmooth.y = damp(pointerSmooth.y, pointer.y, 3.4, delta);
@@ -354,10 +424,15 @@ export function createMascot(): MascotHandle {
     // Turn towards the cursor, and pitch with both the cursor and the page.
     // Positive rotation.x tips the crown towards the viewer, so each of these
     // reads as looking down — the eyes lead the head by a hair.
-    root.rotation.y = damp(root.rotation.y, pointerSmooth.x * 0.4, 3.2, delta);
+    root.rotation.y = damp(
+      root.rotation.y,
+      pointerSmooth.x * 0.4 + (isListening ? -0.1 : isThinking ? 0.08 : 0),
+      3.2,
+      delta,
+    );
     root.rotation.x = damp(
       root.rotation.x,
-      pointerSmooth.y * 0.16 + scrollSmooth * 0.3,
+      pointerSmooth.y * 0.16 + scrollSmooth * 0.3 + (isThinking ? 0.07 : 0),
       3.2,
       delta,
     );
@@ -385,34 +460,73 @@ export function createMascot(): MascotHandle {
     // The raised arm takes over from the idle swing instead of fighting it.
     const idleSwing = 1 - waveLift;
 
+    const conversationBob = isSpeaking
+      ? Math.sin(elapsed * 6) * 0.026
+      : isListening
+        ? Math.sin(elapsed * 2.8) * 0.014
+        : isThinking
+          ? Math.sin(elapsed * 3.8) * 0.016
+          : 0;
     root.position.y =
-      Math.sin(elapsed * 1.5) * 0.032 + waveLift * 0.045 - scrollSmooth * 0.04;
+      Math.sin(elapsed * 1.5) * 0.032 + conversationBob + waveLift * 0.045 - scrollSmooth * 0.04;
     // Leaning into the raised arm is what makes the wave look intentional.
-    root.rotation.z = Math.sin(elapsed * 0.85) * 0.028 - waveLift * 0.06;
+    root.rotation.z =
+      Math.sin(elapsed * 0.85) * 0.028 +
+      (isListening ? -0.07 : isConcerned ? 0.07 : 0) +
+      (isSpeaking ? Math.sin(elapsed * 5.4) * 0.035 : 0) -
+      waveLift * 0.06;
 
     // Breathing: the body squashes a touch on the way down and back on the way up.
     const breath = Math.sin(elapsed * 1.5);
     bodyPivot.scale.y = damp(bodyPivot.scale.y, 1 + breath * 0.018, 8, delta);
 
+    const leftGesture = isListening
+      ? 0.16
+      : isThinking
+        ? 0.24
+        : isSpeaking
+          ? Math.sin(elapsed * 6) * 0.16
+          : 0;
+    const rightGesture = isThinking
+      ? -0.24
+      : isConcerned
+        ? 0.16
+        : isSpeaking
+          ? Math.sin(elapsed * 6 + 1.4) * 0.2
+          : 0;
     armPivots[0].rotation.z =
-      -ARM_REST_ANGLE + idleSwing * Math.sin(elapsed * 1.8) * 0.13;
+      -ARM_REST_ANGLE + idleSwing * (Math.sin(elapsed * 1.8) * 0.13 + leftGesture);
     armPivots[1].rotation.z =
       ARM_REST_ANGLE +
-      idleSwing * Math.sin(elapsed * 1.8 + 1.1) * 0.13 +
+      idleSwing * (Math.sin(elapsed * 1.8 + 1.1) * 0.13 + rightGesture) +
       waveLift * (WAVE_UP_ANGLE - ARM_REST_ANGLE) +
       waveWobble;
 
     // Eyes drift a little further than the head so the gaze feels alive, and
     // drop with the page the same way they follow the cursor downwards. While
-    // thinking they widen slightly, as if paying closer attention.
+    // thinking they widen slightly, as if paying closer attention. Speaking
+    // narrows them a touch, which makes the mouth movement more expressive.
     eyePivot.position.x = pointerSmooth.x * 0.026;
     eyePivot.position.y = -pointerSmooth.y * 0.016 - scrollSmooth * 0.022;
-    setEyeScaleY(damp(eyeLeft.scale.y, thinking ? 1.14 : 1, 6, delta));
+    const eyeTarget = isThinking ? 1.14 : isListening ? 1.06 : isSpeaking ? 0.94 : 1;
+    setEyeScaleY(damp(eyeLeft.scale.y, eyeTarget, 6, delta));
 
-    // Thinking overrides the idle antenna with a faster, larger pulse — the
-    // character's way of showing the assistant is composing an answer.
-    if (thinking) {
+    const voice = Math.abs(Math.sin(elapsed * 10));
+    smile.scale.y = damp(smile.scale.y, isSpeaking ? 0.65 + voice * 0.2 : isConcerned ? 0.45 : 1, 12, delta);
+    talkingMouth.scale.y = damp(talkingMouth.scale.y, isSpeaking ? 0.28 + voice * 0.62 : 0.001, 12, delta);
+    for (const [index, cheek] of cheekLights.entries()) {
+      const cheekPulse = isSpeaking ? 0.72 + Math.abs(Math.sin(elapsed * 10 + index)) * 0.38 : 0.001;
+      cheek.scale.setScalar(damp(cheek.scale.x, cheekPulse, 12, delta));
+    }
+
+    // Each chat state gets a different signal language: fast for thinking,
+    // rhythmic for speaking, and a gentle attentive glow while listening.
+    if (isThinking) {
       antennaGlow.scale.setScalar(1.22 + Math.sin(elapsed * 9) * 0.14);
+    } else if (isSpeaking) {
+      antennaGlow.scale.setScalar(1.16 + Math.sin(elapsed * 10) * 0.12);
+    } else if (isListening) {
+      antennaGlow.scale.setScalar(1.08 + Math.sin(elapsed * 3.8) * 0.07);
     } else {
       antennaGlow.scale.setScalar(
         1 + Math.sin(elapsed * (3.2 + waveLift * 7)) * 0.075 + waveLift * 0.1,
@@ -467,13 +581,8 @@ export function createMascot(): MascotHandle {
         setEyeScaleY(1);
       }
     },
-    setThinking(value) {
-      thinking = value;
-      if (!value) {
-        // Hand the glow back to the idle pulse from its current size, so it
-        // shrinks smoothly instead of snapping.
-        antennaGlow.scale.setScalar(damp(antennaGlow.scale.x, 1, 6, 1 / 60));
-      }
+    setExpression(value) {
+      expression = value;
     },
     dispose() {
       for (const geometry of geometries) geometry.dispose();

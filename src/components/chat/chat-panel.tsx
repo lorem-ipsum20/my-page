@@ -8,6 +8,8 @@ import { SUGGESTED_QUESTIONS } from "@/lib/assistant";
 import { profile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
+type MascotExpression = "idle" | "listening" | "thinking" | "speaking" | "concerned";
+
 /**
  * The companion's chat panel.
  *
@@ -49,12 +51,12 @@ function MessageBubble({
 export function ChatPanel({
   open,
   onClose,
-  onBusyChange,
+  onExpressionChange,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Lets the companion's antenna pulse only while an answer is being composed. */
-  onBusyChange?: (busy: boolean) => void;
+  /** Lets the companion mirror each point in the chat lifecycle. */
+  onExpressionChange?: (expression: MascotExpression) => void;
 }) {
   const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -66,8 +68,17 @@ export function ChatPanel({
   const busy = status === "submitted" || status === "streaming";
 
   useEffect(() => {
-    onBusyChange?.(busy);
-  }, [busy, onBusyChange]);
+    const expression: MascotExpression = error
+      ? "concerned"
+      : status === "submitted"
+        ? "thinking"
+        : status === "streaming"
+          ? "speaking"
+          : open
+            ? "listening"
+            : "idle";
+    onExpressionChange?.(expression);
+  }, [error, open, onExpressionChange, status]);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -120,7 +131,7 @@ export function ChatPanel({
         <div className="flex items-center gap-2">
           <span className={cn("size-2 rounded-full", busy ? "animate-pulse bg-brand" : "bg-emerald-500")} />
           <span className="text-[13px] font-medium">
-            {busy ? "Bit is thinking…" : "Ask me about Aman 👋"}
+            {busy ? "Nova is thinking…" : "Ask Nova about Aman 👋"}
           </span>
         </div>
         <button
@@ -137,7 +148,7 @@ export function ChatPanel({
         {messages.length === 0 && (
           <div className="space-y-3 pt-1">
             <p className="text-[13px] leading-relaxed text-muted-foreground">
-              Hi, I&apos;m Bit 👋 — ask me anything about {profile.name.split(" ")[0]}&apos;s
+              Hi, I&apos;m Nova 👋 — ask me anything about {profile.name.split(" ")[0]}&apos;s
               experience, projects or how to reach him.
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -191,7 +202,7 @@ export function ChatPanel({
         {error && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px]">
             <span className="text-amber-700 dark:text-amber-400">
-              Bit couldn&apos;t answer just now. The key may be missing or rate-limited.
+              Nova couldn&apos;t answer just now. The key may be missing or rate-limited.
             </span>
             <button
               type="button"
@@ -217,7 +228,7 @@ export function ChatPanel({
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
             rows={1}
-            placeholder={busy ? "Bit is typing…" : "Ask about Aman…"}
+            placeholder={busy ? "Nova is typing…" : "Ask about Aman…"}
             aria-label="Your question"
             className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground"
           />

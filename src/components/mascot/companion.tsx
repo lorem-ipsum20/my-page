@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Mascot } from "./mascot";
+import { Mascot, type MascotExpression } from "./mascot";
 import { ChatPanel } from "@/components/chat/chat-panel";
 
 /**
@@ -29,9 +29,29 @@ export function MascotCompanion({
 }) {
   const [docked, setDocked] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  // True only while an answer is actually streaming, so the antenna pulses for
-  // the wait rather than for the whole time the panel happens to be open.
-  const [thinking, setThinking] = useState(false);
+  const [expression, setExpression] = useState<MascotExpression>("idle");
+
+  const toggleChat = () => {
+    setChatOpen((isOpen) => {
+      const nextOpen = !isOpen;
+      setExpression(nextOpen ? "listening" : "idle");
+      return nextOpen;
+    });
+  };
+
+  const closeChat = () => {
+    setChatOpen(false);
+    setExpression("idle");
+  };
+
+  const expressionLabel = {
+    idle: "Say hi",
+    listening: "I’m listening",
+    thinking: "Thinking",
+    speaking: "Here’s what I found",
+    concerned: "Let’s try that again",
+  } satisfies Record<MascotExpression, string>;
+  const mascotPrompt = chatOpen ? expressionLabel[expression] : "Ask Nova about Aman";
 
   useEffect(() => {
     const hero = document.getElementById("top");
@@ -52,15 +72,15 @@ export function MascotCompanion({
     <>
       <button
         type="button"
-        onClick={() => setChatOpen((value) => !value)}
+        onClick={toggleChat}
         aria-expanded={chatOpen}
         aria-haspopup="dialog"
         aria-label={`${chatOpen ? "Close" : "Open"} the chat about Aman`}
-        title={chatOpen ? "Close chat" : "Chat with Bit about Aman"}
+        title={chatOpen ? "Close chat" : "Chat with Nova about Aman"}
         className={cn(
           // Tapping the companion toggles the chat in both states, so the
           // feature is reachable wherever the character is on screen.
-          "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+          "relative cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
           // Docked state keeps pointer events so the chat can open from the
           // corner; the character is small and sits in free space by design.
           docked && "fixed right-6 bottom-[76px] z-30 size-24 pointer-events-auto max-md:bottom-[130px]",
@@ -69,20 +89,40 @@ export function MascotCompanion({
           docked ? "xl:top-[calc(100vh_-_232px)]" : "xl:top-[4.5rem]",
         )}
       >
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute -top-8 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-background/95 px-2.5 py-1 text-[10px] font-medium text-foreground shadow-sm backdrop-blur transition-all duration-300",
+            chatOpen ? "translate-y-0" : "animate-[pulse_2.6s_ease-in-out_infinite]",
+          )}
+        >
+          {mascotPrompt}
+          {expression === "thinking" || expression === "speaking" ? (
+            <span className="flex gap-0.5">
+              {[0, 1, 2].map((dot) => (
+                <span
+                  key={dot}
+                  className="size-1 animate-bounce rounded-full bg-brand"
+                  style={{ animationDelay: `${dot * 120}ms` }}
+                />
+              ))}
+            </span>
+          ) : !chatOpen ? <span className="text-brand">↗</span> : null}
+        </span>
         <Mascot
           fallbackSrc={fallbackSrc}
           fallbackAlt={fallbackAlt}
           // The docked box is always 96px on mobile, so the canvas fills it there
           // instead of keeping the inline hero size.
           className={cn(docked ? "size-24" : "size-20 sm:size-24", "xl:size-full")}
-          thinking={thinking}
+          expression={expression}
         />
       </button>
 
       <ChatPanel
         open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onBusyChange={setThinking}
+        onClose={closeChat}
+        onExpressionChange={setExpression}
       />
     </>
   );
