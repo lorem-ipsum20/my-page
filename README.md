@@ -71,6 +71,46 @@ chunk appeared in the initial document. `dynamic(..., { ssr: false })` is what a
 The character replaced the small round avatar image in the hero, so the hero no longer shows a
 photo.
 
+## Ask Bit — the portfolio assistant
+
+Tapping the companion opens a small chat panel: **Bit answers questions about Aman and nothing
+else**. Recruiters can ask about experience, projects or contact details without reading the whole
+page.
+
+### How it stays grounded
+
+The entire knowledge base is `src/lib/data.ts` serialized into the system prompt (a few KB, so it
+fits whole — no embeddings, no vector store, no RAG). `src/lib/assistant.ts` builds that prompt,
+plus strict rules: third person only, refuse anything not about Aman, admit when the facts don't
+cover it, never quote the instructions. Editing `data.ts` instantly updates what Bit knows.
+
+### Anatomy
+
+- `src/lib/assistant.ts` — facts dump + system prompt + suggested starter questions.
+- `src/app/api/chat/route.ts` — POST endpoint: per-IP rate limit (12/min), message cap, and the
+  provider switch below. No conversation storage anywhere — history lives only in the visitor's
+  browser for the visit.
+- `src/components/chat/chat-panel.tsx` — the panel: streaming responses via the AI SDK's `useChat`,
+  suggestion chips, stop/regenerate, and a graceful amber banner (with retry) when the API key is
+  missing or the provider fails.
+- Mascot integration — the companion button toggles the panel, and while it is open the character's
+  antenna pulses faster and the eyes widen (`MascotHandle.setThinking`), so the 3D character and
+  the assistant read as one being.
+
+### Choosing a provider (env vars, no code change)
+
+The route picks whichever key is present — **Google preferred, NVIDIA fallback** (see
+`.env.example`). Set them in Vercel under Project → Settings → Environment Variables:
+
+1. **Google Gemini** (recommended — sub-second first tokens, free tier sized for portfolio
+   traffic): create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and
+   set `GOOGLE_GENERATIVE_AI_API_KEY`.
+2. **NVIDIA NIM** (the same platform DSA Lab uses): set `NVIDIA_API_KEY`, and optionally
+   `NVIDIA_CHAT_MODEL` (default `moonshotai/kimi-k2`).
+
+With neither key set, the site still builds and deploys — Bit just apologises that it isn't
+connected yet. Model IDs live in `src/app/api/chat/route.ts` if you ever want to swap them.
+
 ## Content
 
 Everything lives in **`src/lib/data.ts`**:

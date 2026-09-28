@@ -56,6 +56,8 @@ export type MascotHandle = {
   setSize: (width: number, height: number) => void;
   setPalette: (palette: MascotPalette) => void;
   setReduceMotion: (reduce: boolean) => void;
+  /** While true the antenna pulses hard and the eyes widen — the "thinking" look. */
+  setThinking: (thinking: boolean) => void;
   dispose: () => void;
 };
 
@@ -307,6 +309,7 @@ export function createMascot(): MascotHandle {
   let waveStartedAt = -1;
   let waveLift = 0;
   let waveWobble = 0;
+  let thinking = false;
 
   const setEyeScaleY = (scale: number) => {
     const clamped = clamp(scale, 0, 1.6);
@@ -333,6 +336,9 @@ export function createMascot(): MascotHandle {
 
     if (reduceMotion) {
       settlePose(delta);
+      // No animation is allowed, but the thinking state must still read: the
+      // glow holds a single enlarged size instead of pulsing.
+      if (thinking) antennaGlow.scale.setScalar(1.3);
       renderer.render(scene, camera);
       return;
     }
@@ -397,13 +403,21 @@ export function createMascot(): MascotHandle {
       waveWobble;
 
     // Eyes drift a little further than the head so the gaze feels alive, and
-    // drop with the page the same way they follow the cursor downwards.
+    // drop with the page the same way they follow the cursor downwards. While
+    // thinking they widen slightly, as if paying closer attention.
     eyePivot.position.x = pointerSmooth.x * 0.026;
     eyePivot.position.y = -pointerSmooth.y * 0.016 - scrollSmooth * 0.022;
+    setEyeScaleY(damp(eyeLeft.scale.y, thinking ? 1.14 : 1, 6, delta));
 
-    antennaGlow.scale.setScalar(
-      1 + Math.sin(elapsed * (3.2 + waveLift * 7)) * 0.075 + waveLift * 0.1,
-    );
+    // Thinking overrides the idle antenna with a faster, larger pulse — the
+    // character's way of showing the assistant is composing an answer.
+    if (thinking) {
+      antennaGlow.scale.setScalar(1.22 + Math.sin(elapsed * 9) * 0.14);
+    } else {
+      antennaGlow.scale.setScalar(
+        1 + Math.sin(elapsed * (3.2 + waveLift * 7)) * 0.075 + waveLift * 0.1,
+      );
+    }
 
     // Blink cycle.
     if (blinkStartedAt < 0 && elapsed >= nextBlinkAt) {
@@ -451,6 +465,14 @@ export function createMascot(): MascotHandle {
         waveLift = 0;
         waveWobble = 0;
         setEyeScaleY(1);
+      }
+    },
+    setThinking(value) {
+      thinking = value;
+      if (!value) {
+        // Hand the glow back to the idle pulse from its current size, so it
+        // shrinks smoothly instead of snapping.
+        antennaGlow.scale.setScalar(damp(antennaGlow.scale.x, 1, 6, 1 / 60));
       }
     },
     dispose() {

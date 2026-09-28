@@ -19,6 +19,8 @@ export function Mascot(props: {
   className?: string;
   fallbackSrc?: string;
   fallbackAlt?: string;
+  /** Shows the "composing an answer" antenna pulse while the chat is streaming. */
+  thinking?: boolean;
 }) {
   return <MascotCanvas {...props} />;
 }

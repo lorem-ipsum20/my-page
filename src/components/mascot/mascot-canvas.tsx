@@ -27,10 +27,12 @@ export function MascotCanvas({
   className,
   fallbackSrc,
   fallbackAlt = "",
+  thinking = false,
 }: {
   className?: string;
   fallbackSrc?: string;
   fallbackAlt?: string;
+  thinking?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<MascotHandle | null>(null);
@@ -248,6 +250,14 @@ export function MascotCanvas({
     handle.setPalette(palette);
     if (reduceMotionRef.current) controlsRef.current?.renderOnce();
   }, [palette]);
+
+  // The thinking look is a scene flag, not a rebuild: the antenna pulses and
+  // the eyes widen for as long as the chat is open, in both loop and
+  // reduced-motion rendering.
+  useEffect(() => {
+    handleRef.current?.setThinking(thinking);
+    if (reduceMotionRef.current) controlsRef.current?.renderOnce();
+  }, [thinking]);
 
   // Toggling the OS motion preference updates the live scene in place.
   useEffect(() => {

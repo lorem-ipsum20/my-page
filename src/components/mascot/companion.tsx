@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Mascot } from "./mascot";
+import { ChatPanel } from "@/components/chat/chat-panel";
 
 /**
- * Places the companion for every screen size.
+ * Places the companion for every screen size, and makes it the front door to
+ * the portfolio chat.
  *
  * In the hero it sits inline beside the name. Once the hero has scrolled past
  * it docks and stays on screen for the rest of the page: on phones and tablets
@@ -26,6 +28,7 @@ export function MascotCompanion({
   fallbackAlt?: string;
 }) {
   const [docked, setDocked] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     const hero = document.getElementById("top");
@@ -43,31 +46,41 @@ export function MascotCompanion({
   }, []);
 
   return (
-    <div
-      className={cn(
-        // In flow, beside the name, while the hero is on screen.
-        "shrink-0",
-        // Docked below xl: the right edge, clear of the copy. On phones it
-        // stacks above the back-to-top button (which itself sits above the
-        // mobile nav pill's band); md–xl has no pill, so the stack is one step.
-        // pointer-events-none so it never blocks taps on the content underneath.
-        docked && "fixed right-6 bottom-[76px] z-30 size-24 pointer-events-none max-md:bottom-[130px]",
-        // Docked from xl up: the margin the content column leaves free. The
-        // right offset is the column's edge plus its 22px gap, which keeps the
-        // companion clear of the copy at any width past xl. bottom-auto hands
-        // positioning back to top, which the two states below set.
-        "xl:pointer-events-none xl:fixed xl:z-30 xl:bottom-auto xl:size-[208px] xl:right-[calc(50%_-_542px)]",
-        "xl:transition-[top] xl:duration-700 xl:ease-out xl:motion-reduce:transition-none",
-        docked ? "xl:top-[calc(100vh_-_232px)]" : "xl:top-[4.5rem]",
-      )}
-    >
-      <Mascot
-        fallbackSrc={fallbackSrc}
-        fallbackAlt={fallbackAlt}
-        // The docked box is always 96px on mobile, so the canvas fills it there
-        // instead of keeping the inline hero size.
-        className={cn(docked ? "size-24" : "size-20 sm:size-24", "xl:size-full")}
+    <>
+      <button
+        type="button"
+        onClick={() => setChatOpen((value) => !value)}
+        aria-expanded={chatOpen}
+        aria-haspopup="dialog"
+        aria-label={`${chatOpen ? "Close" : "Open"} the chat about Aman`}
+        title={chatOpen ? "Close chat" : "Chat with Bit about Aman"}
+        className={cn(
+          // Tapping the companion toggles the chat in both states, so the
+          // feature is reachable wherever the character is on screen.
+          "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+          // Docked state keeps pointer events so the chat can open from the
+          // corner; the character is small and sits in free space by design.
+          docked && "fixed right-6 bottom-[76px] z-30 size-24 pointer-events-auto max-md:bottom-[130px]",
+          "xl:pointer-events-auto xl:fixed xl:z-30 xl:bottom-auto xl:size-[208px] xl:right-[calc(50%_-_542px)]",
+          "xl:transition-[top] xl:duration-700 xl:ease-out xl:motion-reduce:transition-none",
+          docked ? "xl:top-[calc(100vh_-_232px)]" : "xl:top-[4.5rem]",
+        )}
+      >
+        <Mascot
+          fallbackSrc={fallbackSrc}
+          fallbackAlt={fallbackAlt}
+          // The docked box is always 96px on mobile, so the canvas fills it there
+          // instead of keeping the inline hero size.
+          className={cn(docked ? "size-24" : "size-20 sm:size-24", "xl:size-full")}
+          thinking={chatOpen}
+        />
+      </button>
+
+      <ChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        thinking={chatOpen}
       />
-    </div>
+    </>
   );
 }
