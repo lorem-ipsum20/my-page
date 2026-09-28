@@ -16,17 +16,15 @@ import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/assistant";
  * say it doesn't know otherwise. There is no conversation storage anywhere —
  * history lives only in the visitor's browser for the length of the visit.
  *
- * Provider: NVIDIA NIM's OpenAI-compatible endpoint (the same platform the DSA
- * Lab project uses), configured with NVIDIA_API_KEY. Model via NVIDIA_CHAT_MODEL,
- * default moonshotai/kimi-k3 — a reasoning model, so maxOutputTokens leaves it
- * headroom to think before answering. Without the key the panel shows a
- * graceful "not connected" message instead of an error.
+ * Provider: OpenRouter's OpenAI-compatible endpoint with OPENROUTER_API_KEY.
+ * Model via OPENROUTER_MODEL, default ~openai/gpt-sol-latest. The tilde alias
+ * follows the newest GPT Sol model without requiring a redeploy. Without a key
+ * the panel shows a graceful "not connected" message instead of an error.
  */
 export const maxDuration = 30;
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-/** Catalog IDs are literal — kimi-k2 does not exist, kimi-k2.6 and kimi-k3 do. */
-const DEFAULT_NVIDIA_MODEL = "moonshotai/kimi-k3";
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_OPENROUTER_MODEL = "~openai/gpt-sol-latest";
 
 /** Keep the prompt bounded no matter what the client sends. */
 const MAX_MESSAGES = 16;
@@ -71,8 +69,8 @@ export async function POST(req: Request) {
     return errorResponse(400, "That request didn't make sense to me.");
   }
 
-  const nvidiaKey = process.env.NVIDIA_API_KEY;
-  if (!nvidiaKey) {
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  if (!openRouterKey) {
     return errorResponse(
       503,
       "The companion isn't connected to a brain yet — the site owner still needs to add an API key.",
@@ -80,10 +78,16 @@ export async function POST(req: Request) {
   }
 
   const model = createOpenAICompatible({
-    name: "nvidia",
-    baseURL: NVIDIA_BASE_URL,
-    apiKey: nvidiaKey,
-  }).chatModel(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
+    name: "openrouter",
+    baseURL: OPENROUTER_BASE_URL,
+    apiKey: openRouterKey,
+    headers: {
+      // Optional OpenRouter attribution headers (site rankings). Header values
+      // must be latin-1, so no em dashes here.
+      "HTTP-Referer": process.env.SITE_URL ?? "https://amansinganamala.vercel.app",
+      "X-OpenRouter-Title": "Aman Singanamala - Portfolio",
+    },
+  }).chatModel(process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL);
 
   const result = streamText({
     model,
@@ -94,8 +98,8 @@ export async function POST(req: Request) {
     // surfaces as the panel's friendly error banner instead of an endless
     // spinner.
     abortSignal: AbortSignal.timeout(25_000),
-    // Roomy enough for a reasoning model to think and still answer; the system
-    // prompt is what keeps the *visible* reply to a few sentences.
+    // Roomy enough for a reasoning model's hidden thinking plus a concise
+    // visible reply; the system prompt is what keeps the reply short.
     maxOutputTokens: 2048,
   });
 

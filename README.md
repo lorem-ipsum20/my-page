@@ -101,12 +101,17 @@ cover it, never quote the instructions. Editing `data.ts` instantly updates what
 
 ### Choosing a provider (env vars, no code change)
 
-Bit runs on **NVIDIA NIM** (the same platform DSA Lab uses). Set in Vercel under Project →
-Settings → Environment Variables:
+Bit runs through [OpenRouter](https://openrouter.ai), which uses an OpenAI-compatible chat
+endpoint. Set these in Vercel under Project → Settings → Environment Variables:
 
-1. `NVIDIA_API_KEY` — required; create one at [build.nvidia.com](https://build.nvidia.com).
-2. `NVIDIA_CHAT_MODEL` — optional; default `moonshotai/kimi-k3` (a reasoning model, so the
-   route leaves it token headroom to think before answering).
+1. `OPENROUTER_API_KEY` — required; create one at [OpenRouter Keys](https://openrouter.ai/keys).
+   Keep it server-only; never expose it as `NEXT_PUBLIC_*`.
+2. `OPENROUTER_MODEL` — optional; defaults to `~openai/gpt-sol-latest`, an alias that stays on
+   the newest GPT Sol model. Set a different OpenRouter model slug here to change models without
+   modifying the route. GPT Sol is a paid model, so ensure the OpenRouter account has credits and
+   appropriate spend limits.
+3. `SITE_URL` — optional; the public deployment URL used for OpenRouter app attribution. It
+   defaults to the portfolio's production URL.
 
 Without the key, the site still builds and deploys — Bit just apologises that it isn't
 connected yet. Model IDs live in `src/app/api/chat/route.ts` if you ever want to swap them.
