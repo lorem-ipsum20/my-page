@@ -17,7 +17,11 @@ export const profile = {
   email: "amansinganamala@gmail.com",
   phone: "+91 81791 00748",
   avatar: "https://github.com/aman-singanamala.png?size=460",
-  resumeUrl: "/AmanSinganamala-Resume.pdf",
+  // Served from the GitHub Releases "latest download" URL: the address never
+  // changes, but it always returns the newest asset on the `resume` release —
+  // so the résumé is updated by replacing the release asset, not by redeploying.
+  // The replacement file must keep the exact same filename.
+  resumeUrl: "https://github.com/lorem-ipsum20/my-page/releases/latest/download/AmanSinganamala-Resume.pdf",
   summary:
     "Full Stack Software Developer with experience building scalable web applications using React.js, Spring Boot, Java, JavaScript, TypeScript and REST APIs in enterprise environments, with growing hands-on expertise in AI-driven development using LLMs, LangChain and agentic application tooling.",
   summarySecondary:

@@ -76,6 +76,20 @@ photo.
 Everything lives in **`src/lib/data.ts`**:
 
 - `profile` — name, role, tagline, summaries, location, avatar, résumé link
+
+### Updating the résumé (no redeploy)
+
+The PDF is **not** in the repo. `profile.resumeUrl` points at the GitHub Releases
+"latest download" URL, which never changes but always serves the newest asset on the
+`resume` release:
+
+> https://github.com/lorem-ipsum20/my-page/releases/latest/download/AmanSinganamala-Resume.pdf
+
+To publish a new résumé: open the [resume release](https://github.com/lorem-ipsum20/my-page/releases/tag/resume)
+on GitHub, delete the old asset, upload the new PDF **with the exact same filename**, save.
+The site picks it up on the next download — no commit, no deploy, doable from a phone.
+The release must stay the latest one, and the repo must stay public for the link to work
+anonymously.
 - `socials` — GitHub, LeetCode, LinkedIn, Medium, X, email
 - `experience` — UBS full-time + internship, with the résumé bullets
 - `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps
