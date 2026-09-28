@@ -99,7 +99,7 @@ anonymously.
 ### Known gaps to fill in
 
 `projects[0].repoUrl` (DSA Lab) is `null` — the source is private, so the card shows its live
-demo link alongside a "Private repository" note. Fill in a public repo URL if one ever exists.
+demo link (codevisualizer.vercel.app) only. Add a public repo URL if one ever exists.
 
 ## Theming
 
