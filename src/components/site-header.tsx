@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring } from "motion/react";
 import { NAV_LINKS, profile } from "@/lib/data";
+import { useActiveSection } from "@/lib/use-active-section";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
-  const [activeSection, setActiveSection] = useState("");
+  const activeSection = useActiveSection();
   const [scrolled, setScrolled] = useState(false);
 
   const { scrollYProgress } = useScroll();
@@ -23,52 +24,6 @@ export function SiteHeader() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Highlight the section that has most recently crossed the probe line.
-  // A probe line is used instead of IntersectionObserver so the last section
-  // still activates when the page bottoms out between two sections.
-  useEffect(() => {
-    const sections = NAV_LINKS.map((link) =>
-      document.getElementById(link.href.slice(1)),
-    ).filter((element): element is HTMLElement => element !== null);
-
-    if (sections.length === 0) return;
-
-    let frame = 0;
-
-    const updateActiveSection = () => {
-      frame = 0;
-      const probe = window.innerHeight * 0.3;
-      let current = sections[0].id;
-
-      for (const section of sections) {
-        if (section.getBoundingClientRect().top <= probe) current = section.id;
-      }
-
-      const atPageEnd =
-        window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 8;
-
-      if (atPageEnd) current = sections[sections.length - 1].id;
-
-      setActiveSection((previous) => (previous === current ? previous : current));
-    };
-
-    const onScroll = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(updateActiveSection);
-    };
-
-    updateActiveSection();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
   }, []);
 
   return (

@@ -47,10 +47,11 @@ export function MascotCompanion({
       className={cn(
         // In flow, beside the name, while the hero is on screen.
         "shrink-0",
-        // Docked below xl: the corner, stacked above the back-to-top button
-        // (24px + 40px button + 12px gap). pointer-events-none so it never
-        // blocks taps on the content underneath.
-        docked && "fixed right-6 bottom-[76px] z-30 size-24 pointer-events-none",
+        // Docked below xl: the right edge, clear of the copy. On phones it
+        // stacks above the back-to-top button (which itself sits above the
+        // mobile nav pill's band); md–xl has no pill, so the stack is one step.
+        // pointer-events-none so it never blocks taps on the content underneath.
+        docked && "fixed right-6 bottom-[76px] z-30 size-24 pointer-events-none max-md:bottom-[130px]",
         // Docked from xl up: the margin the content column leaves free. The
         // right offset is the column's edge plus its 22px gap, which keeps the
         // companion clear of the copy at any width past xl. bottom-auto hands

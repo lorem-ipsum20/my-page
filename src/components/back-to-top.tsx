@@ -45,7 +45,10 @@ export function BackToTop() {
       // and it already turns itself off under reduced motion.
       onClick={() => window.scrollTo({ top: 0 })}
       className={cn(
-        "fixed right-6 bottom-6 z-40 size-10 rounded-full border border-border bg-background/80 backdrop-blur-md transition-[opacity,transform,visibility] duration-300 ease-out hover:-translate-y-0.5 hover:text-brand",
+        // On phones this sits above the mobile nav pill's band (bottom-4 +
+        // ~45px), with the docked companion stacked above it in turn; from md up
+        // there is no pill, so it returns to the plain corner.
+        "fixed right-6 bottom-[76px] z-40 md:bottom-6 size-10 rounded-full border border-border bg-background/80 backdrop-blur-md transition-[opacity,transform,visibility] duration-300 ease-out hover:-translate-y-0.5 hover:text-brand",
         visible
           ? "visible translate-y-0 opacity-100"
           : "invisible translate-y-2 opacity-0",

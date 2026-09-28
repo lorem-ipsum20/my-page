@@ -1,5 +1,6 @@
 import { profile } from "@/lib/data";
 import { BackToTop } from "@/components/back-to-top";
+import { MobileNav } from "@/components/mobile-nav";
 import { About } from "@/components/portfolio/about";
 import { Contact } from "@/components/portfolio/contact";
 import { Education } from "@/components/portfolio/education";
@@ -27,6 +28,7 @@ export default function Home() {
       </main>
 
       <BackToTop />
+      <MobileNav />
 
       <footer className="mt-6 border-t border-border">
         <div className="mx-auto w-full max-w-2xl px-6 py-8 text-[12px] text-muted-foreground">

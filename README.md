@@ -137,6 +137,14 @@ technology looks identical wherever it appears. `toneForTag()` does the same for
 - The hero staggers on mount.
 - `SiteHeader` tracks scroll progress with a spring and highlights the active section against a
   probe line (not `IntersectionObserver`, so the last section still activates at the page end).
+  The probe-line logic lives in `useActiveSection()` (`src/lib`), shared with the mobile dock so
+  both can never disagree.
+- **Mobile nav** — below `md` the header links are replaced by a frosted pill fixed at the bottom
+  (`src/components/mobile-nav.tsx`): all six sections as chips, the active one inverted. It hides
+  while the reader scrolls down and returns on scrolling up or at the top, with a short suppression
+  window after a tap so using it never hides it. On phones the floating elements stack in the right
+  corner — mobile dock band, back-to-top above it, docked companion above that — while `md`+ widths
+  keep the plain corner.
 - Resume bullets past the first four expand with a `grid-template-rows: 0fr → 1fr` transition.
 - `BackToTop` fades in once the hero leaves the viewport and rides the page's own
   `scroll-behavior`, so it is smooth normally and instant under reduced motion without any JS
@@ -166,6 +174,7 @@ src/
     globals.css                    # light/dark tokens, view-transition styles
   components/
     site-header.tsx                # sticky nav, progress bar, scroll spy
+    mobile-nav.tsx                 # bottom section dock on <md screens
     back-to-top.tsx                # floating jump-to-top, appears past the hero
     theme-toggle.tsx               # radial-wipe theme switch
     theme-provider.tsx
