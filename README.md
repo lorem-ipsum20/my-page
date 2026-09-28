@@ -106,9 +106,11 @@ demo link (codevisualizer.vercel.app) only. Add a public repo URL if one ever ex
 - `next-themes` with `attribute="class"`, defaulting to the system preference.
 - Tokens are defined twice in `src/app/globals.css` under `:root` and `.dark`, in OKLCH.
 - `--brand` is the single accent colour used for focus rings, links and the scroll progress bar.
-- The toggle in the header animates with the **View Transitions API** — a radial wipe that expands
-  from the click point. It falls back to an instant swap where unsupported or when the user prefers
-  reduced motion.
+- The toggle in the header is a **segmented sun/moon switch** — both options always visible with
+  the active one raised, so it shows the current theme instead of a static icon. It animates with
+  the **View Transitions API** — a radial wipe that expands from the click point. It falls back to
+  an instant swap where unsupported or when the user prefers reduced motion. The highlight applies
+  after mount, keeping hydration exact (next-themes cannot know the system theme on the server).
 
 ## Colour coding
 
