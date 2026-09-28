@@ -5,7 +5,6 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import { google } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/assistant";
 
@@ -17,22 +16,17 @@ import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/assistant";
  * say it doesn't know otherwise. There is no conversation storage anywhere —
  * history lives only in the visitor's browser for the length of the visit.
  *
- * Provider selection, by env var (so switching needs no code change):
- *   GOOGLE_GENERATIVE_AI_API_KEY  — preferred: Gemini Flash-Lite, sub-second
- *                                   first tokens and a free tier sized for
- *                                   portfolio traffic.
- *   NVIDIA_API_KEY                — fallback: NVIDIA NIM's OpenAI-compatible
- *                                   endpoint (the same platform the DSA Lab
- *                                   project uses). Model via NVIDIA_CHAT_MODEL,
- *                                   default moonshotai/kimi-k2.
- * With both set, Google wins; with neither, the panel shows a graceful
- * "not connected" message instead of an error.
+ * Provider: NVIDIA NIM's OpenAI-compatible endpoint (the same platform the DSA
+ * Lab project uses), configured with NVIDIA_API_KEY. Model via NVIDIA_CHAT_MODEL,
+ * default moonshotai/kimi-k3 — a reasoning model, so maxOutputTokens leaves it
+ * headroom to think before answering. Without the key the panel shows a
+ * graceful "not connected" message instead of an error.
  */
 export const maxDuration = 30;
 
 const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const DEFAULT_NVIDIA_MODEL = "moonshotai/kimi-k2";
-const GOOGLE_MODEL = "gemini-2.5-flash-lite";
+/** Catalog IDs are literal — kimi-k2 does not exist, kimi-k2.6 and kimi-k3 do. */
+const DEFAULT_NVIDIA_MODEL = "moonshotai/kimi-k3";
 
 /** Keep the prompt bounded no matter what the client sends. */
 const MAX_MESSAGES = 16;
@@ -77,30 +71,32 @@ export async function POST(req: Request) {
     return errorResponse(400, "That request didn't make sense to me.");
   }
 
-  const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   const nvidiaKey = process.env.NVIDIA_API_KEY;
-
-  if (!googleKey && !nvidiaKey) {
+  if (!nvidiaKey) {
     return errorResponse(
       503,
       "The companion isn't connected to a brain yet — the site owner still needs to add an API key.",
     );
   }
 
-  const model = googleKey
-    ? google(GOOGLE_MODEL)
-    : createOpenAICompatible({
-        name: "nvidia",
-        baseURL: NVIDIA_BASE_URL,
-        apiKey: nvidiaKey as string,
-      }).chatModel(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
+  const model = createOpenAICompatible({
+    name: "nvidia",
+    baseURL: NVIDIA_BASE_URL,
+    apiKey: nvidiaKey,
+  }).chatModel(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
 
   const result = streamText({
     model,
     system: ASSISTANT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages.slice(-MAX_MESSAGES)),
     temperature: 0.3,
-    maxOutputTokens: 500,
+    // Hard stop under the 30s function limit: a queued or stalled provider
+    // surfaces as the panel's friendly error banner instead of an endless
+    // spinner.
+    abortSignal: AbortSignal.timeout(25_000),
+    // Roomy enough for a reasoning model to think and still answer; the system
+    // prompt is what keeps the *visible* reply to a few sentences.
+    maxOutputTokens: 2048,
   });
 
   return createUIMessageStreamResponse({

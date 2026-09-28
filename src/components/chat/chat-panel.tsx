@@ -49,11 +49,12 @@ function MessageBubble({
 export function ChatPanel({
   open,
   onClose,
-  thinking,
+  onBusyChange,
 }: {
   open: boolean;
   onClose: () => void;
-  thinking: boolean;
+  /** Lets the companion's antenna pulse only while an answer is being composed. */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -63,6 +64,10 @@ export function ChatPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -84,25 +89,39 @@ export function ChatPanel({
     }
   };
 
-  // On phone widths the sheet sits just above the mobile dock.
-  const placement = "max-md:bottom-[64px] max-md:left-3 max-md:right-3 md:bottom-[92px] md:left-auto md:right-4";
+  // Phone: a sheet above the section dock, sized by its insets (a width would
+  // fight `right` and push the panel off screen). From md up it moves to the
+  // bottom-LEFT, which is empty at that width — leaving the companion visible in
+  // the bottom-right while it thinks, instead of hiding the character behind
+  // its own chat.
+  const placement =
+    "max-md:bottom-[64px] max-md:left-3 max-md:right-3 md:bottom-5 md:left-5 md:right-auto md:w-96";
 
   return (
     <div
       role="dialog"
       aria-label="Ask about Aman"
       aria-hidden={!open}
+      // Closed panels stay mounted (so the conversation survives a close), so
+      // `inert` is what keeps their buttons out of the tab order and away from
+      // assistive tech while they are invisible.
+      inert={!open}
       className={cn(
-        "fixed z-40 flex max-h-[min(26rem,60dvh)] w-full flex-col overflow-hidden rounded-2xl border border-border bg-background/90 shadow-lg backdrop-blur transition-[opacity,transform] duration-300 ease-out",
-        "sm:w-96",
+        // z-50, above the back-to-top button and the dock (both z-40), which it
+        // covers at phone widths — so it is opaque there rather than letting
+        // them show through, and translucent only from md up, where it floats
+        // over the empty margin instead of over controls.
+        "fixed z-50 flex max-h-[min(26rem,60dvh)] flex-col overflow-hidden rounded-2xl border border-border bg-background max-md:bg-background md:bg-background/90 md:backdrop-blur transition-[opacity,transform] duration-300 ease-out",
         placement,
         open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >
       <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className={cn("size-2 rounded-full", thinking ? "animate-pulse bg-brand" : "bg-emerald-500")} />
-          <span className="text-[13px] font-medium">Bit — Aman&apos;s companion</span>
+          <span className={cn("size-2 rounded-full", busy ? "animate-pulse bg-brand" : "bg-emerald-500")} />
+          <span className="text-[13px] font-medium">
+            {busy ? "Bit is thinking…" : "Ask me about Aman 👋"}
+          </span>
         </div>
         <button
           type="button"
@@ -118,8 +137,8 @@ export function ChatPanel({
         {messages.length === 0 && (
           <div className="space-y-3 pt-1">
             <p className="text-[13px] leading-relaxed text-muted-foreground">
-              Hi — I&apos;m Bit, the little robot in the corner. Ask me anything about{" "}
-              {profile.name.split(" ")[0]}: his work, projects, or how to reach him.
+              Hi, I&apos;m Bit 👋 — ask me anything about {profile.name.split(" ")[0]}&apos;s
+              experience, projects or how to reach him.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {SUGGESTED_QUESTIONS.map((question) => (

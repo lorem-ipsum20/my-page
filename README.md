@@ -24,7 +24,8 @@ state and nothing to license.
 The xl right offset is `calc(50% - 542px)` rather than a fixed `right`, which reproduces the
 content column's edge plus its 22px gap at any width past `xl` instead of drifting with the
 viewport. On mobile the dock sits at `bottom: 76px` — 24px edge + 40px back-to-top button +
-12px gap — and is `pointer-events-none`, so it never blocks a tap on the content underneath.
+12px gap. The companion is a real button (it opens the chat, see below), so it takes pointer
+events in both states; its box stays inside the free margin at `xl` and in the corner below it.
 
 The wrapper is deliberately a sibling of the `<Reveal>` around the name block: Motion puts a
 `transform` on that element, which would make it the containing block for a positioned child and
@@ -35,7 +36,8 @@ break the margin placement.
 - `src/components/mascot/mascot-canvas.tsx` — a client component that mounts the canvas, sizes it
   with a `ResizeObserver`, tracks the pointer and the scroll, and runs/pauses the loop.
 - `src/components/mascot/companion.tsx` — the wrapper that keeps it inline in the hero and docks
-  it in the corner (or the margin from `xl` up) once the hero scrolls away.
+  it in the corner (or the margin from `xl` up) once the hero scrolls away, and the button that
+  toggles the chat panel.
 - `src/components/mascot/mascot.tsx` — a thin `next/dynamic` wrapper.
 
 ### Why `next/dynamic` and not a plain `import()`
@@ -99,16 +101,14 @@ cover it, never quote the instructions. Editing `data.ts` instantly updates what
 
 ### Choosing a provider (env vars, no code change)
 
-The route picks whichever key is present — **Google preferred, NVIDIA fallback** (see
-`.env.example`). Set them in Vercel under Project → Settings → Environment Variables:
+Bit runs on **NVIDIA NIM** (the same platform DSA Lab uses). Set in Vercel under Project →
+Settings → Environment Variables:
 
-1. **Google Gemini** (recommended — sub-second first tokens, free tier sized for portfolio
-   traffic): create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and
-   set `GOOGLE_GENERATIVE_AI_API_KEY`.
-2. **NVIDIA NIM** (the same platform DSA Lab uses): set `NVIDIA_API_KEY`, and optionally
-   `NVIDIA_CHAT_MODEL` (default `moonshotai/kimi-k2`).
+1. `NVIDIA_API_KEY` — required; create one at [build.nvidia.com](https://build.nvidia.com).
+2. `NVIDIA_CHAT_MODEL` — optional; default `moonshotai/kimi-k3` (a reasoning model, so the
+   route leaves it token headroom to think before answering).
 
-With neither key set, the site still builds and deploys — Bit just apologises that it isn't
+Without the key, the site still builds and deploys — Bit just apologises that it isn't
 connected yet. Model IDs live in `src/app/api/chat/route.ts` if you ever want to swap them.
 
 ## Content

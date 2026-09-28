@@ -29,6 +29,9 @@ export function MascotCompanion({
 }) {
   const [docked, setDocked] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  // True only while an answer is actually streaming, so the antenna pulses for
+  // the wait rather than for the whole time the panel happens to be open.
+  const [thinking, setThinking] = useState(false);
 
   useEffect(() => {
     const hero = document.getElementById("top");
@@ -72,14 +75,14 @@ export function MascotCompanion({
           // The docked box is always 96px on mobile, so the canvas fills it there
           // instead of keeping the inline hero size.
           className={cn(docked ? "size-24" : "size-20 sm:size-24", "xl:size-full")}
-          thinking={chatOpen}
+          thinking={thinking}
         />
       </button>
 
       <ChatPanel
         open={chatOpen}
         onClose={() => setChatOpen(false)}
-        thinking={chatOpen}
+        onBusyChange={setThinking}
       />
     </>
   );

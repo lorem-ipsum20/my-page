@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.82",
     "@ai-sdk/openai-compatible": "^3.0.57",
     "@ai-sdk/react": "^4.0.121",
     "@base-ui/react": "^1.8.0",
