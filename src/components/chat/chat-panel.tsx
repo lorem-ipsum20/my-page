@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { ArrowUp, RotateCcw, X } from "lucide-react";
+import { ArrowUp, RotateCcw, Square, X } from "lucide-react";
 import { SUGGESTED_QUESTIONS } from "@/lib/assistant";
 import { profile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Mascot, type MascotExpression } from "@/components/mascot/mascot";
+import { Markdown } from "./markdown";
 
 /**
  * The companion's chat panel.
@@ -32,16 +33,22 @@ function MessageBubble({
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm",
           isUser
             ? "rounded-br-sm bg-brand text-white"
-            : "rounded-bl-sm border border-border bg-background/80",
+            : "rounded-bl-sm border border-border bg-card",
         )}
       >
-        <p className="whitespace-pre-wrap">
-          {text}
-          {isStreaming && <span className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-current align-middle" />}
-        </p>
+        {/* Markdown renders live while streaming; the caret rides on the last
+            block so partial **bold** can't flash as literal asterisks. */}
+        <Markdown
+          text={text}
+          className={
+            isStreaming
+              ? "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:content-['▍']"
+              : undefined
+          }
+        />
       </div>
     </div>
   );
@@ -57,12 +64,13 @@ export function ChatPanel({
   /** Lets the companion mirror each point in the chat lifecycle. */
   onExpressionChange?: (expression: MascotExpression) => void;
 }) {
-  const { messages, sendMessage, status, error, regenerate } = useChat({
+  const { messages, sendMessage, status, error, regenerate, stop } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
   const mascotExpression: MascotExpression = error
@@ -84,6 +92,14 @@ export function ChatPanel({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, open]);
+
+  // Grows the composer with the draft, up to max-h; rows=1 keeps the min size.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+  }, [input]);
 
   const submit = (text: string) => {
     const value = text.trim();
@@ -121,7 +137,7 @@ export function ChatPanel({
         // covers at phone widths — so it is opaque there rather than letting
         // them show through, and translucent only from md up, where it floats
         // over the empty margin instead of over controls.
-        "fixed z-50 flex max-h-[min(26rem,60dvh)] flex-col overflow-hidden rounded-2xl border border-border bg-background max-md:bg-background md:bg-background/90 md:backdrop-blur transition-[opacity,transform] duration-300 ease-out",
+        "fixed z-50 flex max-h-[min(30rem,70dvh)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-lg shadow-black/5 max-md:bg-background md:bg-background/90 md:backdrop-blur transition-[opacity,transform] duration-300 ease-out",
         placement,
         open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
@@ -151,13 +167,16 @@ export function ChatPanel({
           type="button"
           onClick={onClose}
           aria-label="Close chat"
-          className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="size-4" />
         </button>
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-3 overflow-y-auto px-4 py-4 overscroll-contain"
+      >
         {messages.length === 0 && (
           <div className="space-y-3 pt-1">
             <p className="text-[13px] leading-relaxed text-muted-foreground">
@@ -170,7 +189,7 @@ export function ChatPanel({
                   key={question}
                   type="button"
                   onClick={() => submit(question)}
-                  className="rounded-full border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:border-brand/50 hover:text-brand"
+                  className="rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:border-brand/50 hover:text-brand"
                 >
                   {question}
                 </button>
@@ -198,7 +217,7 @@ export function ChatPanel({
 
         {status === "submitted" && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm border border-border bg-background/80 px-3 py-2">
+            <div className="rounded-2xl rounded-bl-sm border border-border bg-card px-3.5 py-2.5">
               <span className="flex gap-1">
                 {[0, 1, 2].map((dot) => (
                   <span
@@ -235,24 +254,36 @@ export function ChatPanel({
           submit(input);
         }}
       >
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card px-2 py-1.5 transition-colors focus-within:border-brand/50">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
             rows={1}
             placeholder={busy ? "Nova is typing…" : "Ask about Aman…"}
             aria-label="Your question"
-            className="max-h-24 flex-1 resize-none bg-transparent px-2 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground"
+            className="max-h-24 flex-1 resize-none bg-transparent px-1.5 py-1 text-[13px] outline-none placeholder:text-muted-foreground"
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || busy}
-            aria-label="Send message"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-opacity disabled:opacity-40"
-          >
-            <ArrowUp className="size-4" />
-          </button>
+          {busy ? (
+            <button
+              type="button"
+              onClick={() => stop()}
+              aria-label="Stop generating"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Square className="size-3 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              aria-label="Send message"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          )}
         </div>
       </form>
     </div>
