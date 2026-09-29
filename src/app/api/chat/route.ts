@@ -44,10 +44,39 @@ const FREE_MODEL_CHAIN = [
 
 /** Keep the prompt bounded no matter what the client sends. */
 const MAX_MESSAGES = 16;
+/** A JSON body bigger than this is abusive (16 turns of prose is far smaller). */
+const MAX_BODY_BYTES = 256 * 1024;
+/** A same-origin POST is expected; cross-site calls get logged and bounced. */
+const ALLOWED_ORIGINS = new Set(
+  [process.env.SITE_URL ?? "https://amansinganamala.vercel.app", "http://localhost:3000"].flatMap(
+    (url) => [url, url.replace(/^https?:\/\//, "")],
+  ),
+);
 
 const RATE_LIMIT_MAX = 12;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const ANSWER_CACHE_SECONDS = 60 * 60 * 24;
+
+/**
+ * Coffee-break one-liners for upstream outages, cycled by request count so a
+ * visitor hammering retry sees variety instead of the same line. Mirrors the
+ * panel-side list in chat-panel.tsx — keep the two in sync thematically.
+ */
+const UPSTREAM_QUIPS = [
+  "Nova's circuits need a coffee break ☕ — please try again in a moment.",
+  "My brain just buffering... give me a sec and ask again 🌀",
+  "404: witty answer not found. Even robots have off days — retry? 🤖",
+  "The AI gods are busy right now 🙏 — summon me again in a minute.",
+  "Shh... Nova's gears are overheating ⚙️ — one moment, please.",
+];
+
+let quipCursor = 0;
+
+function quipForRequest() {
+  // Per-instance counter: good enough to rotate for any single visitor.
+  quipCursor = (quipCursor + 1) % UPSTREAM_QUIPS.length;
+  return UPSTREAM_QUIPS[quipCursor];
+}
 
 /** Per-instance best effort: enough to stop casual spam, invisible to humans. */
 const hits = new Map<string, number[]>();
@@ -66,6 +95,26 @@ function isRateLimited(key: string) {
 
 function errorResponse(status: number, message: string) {
   return Response.json({ error: message }, { status });
+}
+
+/**
+ * One structured line per rejected request, so abuse is visible in the Vercel
+ * log drain without parsing prose. Request context only: never log message
+ * contents — a question about someone's CV is still private data.
+ */
+function logRejection(req: Request, ip: string, reason: string, detail?: string) {
+  console.warn(
+    JSON.stringify({
+      event: "nova_request_rejected",
+      reason,
+      detail: detail ?? null,
+      ip,
+      origin: req.headers.get("origin") ?? null,
+      referer: req.headers.get("referer") ?? null,
+      contentLength: req.headers.get("content-length"),
+      userAgent: req.headers.get("user-agent")?.slice(0, 180) ?? null,
+    }),
+  );
 }
 
 function openRouterHeaders(apiKey: string) {
@@ -182,10 +231,26 @@ async function getCachedAnswer({
 
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  // Same-origin gate: the chat only ever posts from the portfolio itself, so
+  // anything else is scripted abuse (bots scanning for open AI proxies).
+  const origin = req.headers.get("origin");
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    logRejection(req, ip, "cross_origin", origin);
+    return errorResponse(403, "I only answer questions asked from my home site.");
+  }
+
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    logRejection(req, ip, "body_too_large", `${contentLength} bytes`);
+    return errorResponse(413, "That question is way too long for me to hold.");
+  }
+
   if (isRateLimited(ip)) {
+    logRejection(req, ip, "rate_limited", `${RATE_LIMIT_MAX} requests in ${RATE_LIMIT_WINDOW_MS / 1000}s`);
     return errorResponse(
       429,
-      "You're asking faster than I can think — give me a moment and try again.",
+      "Whoa, one at a time! 🤯 Nova's tiny fans are spinning at max — let her cool down for a minute.",
     );
   }
 
@@ -195,6 +260,7 @@ export async function POST(req: Request) {
     if (!Array.isArray(body.messages)) throw new Error("missing messages");
     messages = body.messages;
   } catch {
+    logRejection(req, ip, "malformed_body");
     return errorResponse(400, "That request didn't make sense to me.");
   }
 
@@ -223,7 +289,7 @@ export async function POST(req: Request) {
         }),
       );
     } catch {
-      return errorResponse(502, "Nova's circuits need a coffee break ☕ — please try again in a moment.");
+      return errorResponse(502, quipForRequest());
     }
   }
 

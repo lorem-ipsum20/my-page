@@ -14,6 +14,19 @@ import { Markdown } from "./markdown";
 const STORAGE_KEY = "nova-chat:v1";
 const UNDO_MS = 8000;
 
+/**
+ * Coffee-break one-liners shown when the API errors, cycled per error so
+ * hammering retry shows variety. Mirrors UPSTREAM_QUIPS in the chat route —
+ * keep the two in sync thematically.
+ */
+const ERROR_QUIPS = [
+  "Nova's circuits need a coffee break ☕ — ask me again in a moment!",
+  "My brain just buffering... give me a sec and try again 🌀",
+  "404: witty answer not found. Even robots have off days — retry? 🤖",
+  "The AI gods are busy right now 🙏 — summon me again in a minute.",
+  "Shh... Nova's gears are overheating ⚙️ — one moment, please.",
+];
+
 function loadStoredMessages(): UIMessage[] | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -116,6 +129,9 @@ export function ChatPanel({
   // Conversation backup for the undo toast; null when there is nothing to undo.
   const [undoSnapshot, setUndoSnapshot] = useState<UIMessage[] | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Which error one-liner is showing; advanced where errors are cleared so no
+  // effect-render cascade is needed.
+  const [quipIndex, setQuipIndex] = useState(0);
   // Follow-ups offered between replies: every sample the visitor hasn't asked
   // yet, shuffled so each visit nudges a different corner of the portfolio.
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
@@ -164,6 +180,7 @@ export function ChatPanel({
   const clearConversation = () => {
     if (busy) stop();
     clearError();
+    setQuipIndex((index) => (index + 1) % ERROR_QUIPS.length);
     if (messages.length === 0) return;
     setUndoSnapshot(messages);
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -368,11 +385,14 @@ export function ChatPanel({
         {error && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px]">
             <span className="text-amber-700 dark:text-amber-400">
-              Nova&apos;s circuits need a coffee break ☕ — ask me again in a moment!
+              {ERROR_QUIPS[quipIndex]}
             </span>
             <button
               type="button"
-              onClick={() => regenerate()}
+              onClick={() => {
+                setQuipIndex((index) => (index + 1) % ERROR_QUIPS.length);
+                regenerate();
+              }}
               className="inline-flex shrink-0 items-center gap-1 font-medium text-amber-700 hover:underline dark:text-amber-400"
             >
               <RotateCcw className="size-3" /> Retry
