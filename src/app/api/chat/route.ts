@@ -18,14 +18,29 @@ import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/assistant";
  * history lives only in the visitor's browser for the length of the visit.
  *
  * Provider: OpenRouter's OpenAI-compatible endpoint with OPENROUTER_API_KEY.
- * Model via OPENROUTER_MODEL, default ~openai/gpt-sol-latest. The tilde alias
- * follows the newest GPT Sol model without requiring a redeploy. Without a key
- * the panel shows a graceful "not connected" message instead of an error.
+ * Model via OPENROUTER_MODEL. The default is a FREE-TIER model — the portfolio
+ * runs on free models only. A fallback chain handles the free tier's shared
+ * rate limits: if the primary returns 429, the request retries down the chain
+ * before the panel shows its friendly error banner.
  */
 export const maxDuration = 30;
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_OPENROUTER_MODEL = "~openai/gpt-sol-latest";
+
+/**
+ * Free-tier model chain, tried in order on 429 (rate limited). All are $0
+ * prompt/completion on OpenRouter:
+ *  - Nemotron 3 Ultra: NVIDIA's flagship free model, 1M context, strong
+ *    instruction following — best markdown quality of the free roster.
+ *  - Qwen 3.8 27B: lighter, fast, reliable — first fallback.
+ *  - Gemma 4 31B: Google's free option — last resort before the error banner.
+ * OPENROUTER_MODEL overrides the whole chain when set (single model).
+ */
+const FREE_MODEL_CHAIN = [
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "qwen/qwen3.8-27b:free",
+  "google/gemma-4-31b-it:free",
+];
 
 /** Keep the prompt bounded no matter what the client sends. */
 const MAX_MESSAGES = 16;
@@ -117,40 +132,52 @@ function completionText(payload: OpenRouterCompletion) {
   return "";
 }
 
+/**
+ * Answer a standalone question, walking the free-model chain on 429. Only the
+ * final, successful body is handed to Next's force-cache — failed attempts are
+ * never cached, so a model recovering from rate-limit pressure heals itself.
+ */
 async function getCachedAnswer({
   apiKey,
-  modelId,
+  modelChain,
   question,
 }: {
   apiKey: string;
-  modelId: string;
+  modelChain: string[];
   question: string;
 }) {
-  // Next caches this POST by its URL, headers, and body. The body includes the
-  // model, canonical question, and complete portfolio prompt, so an updated
-  // profile or a changed model naturally gets its own cache entry.
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: openRouterHeaders(apiKey),
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        { role: "system", content: ASSISTANT_SYSTEM_PROMPT },
-        { role: "user", content: question },
-      ],
-      temperature: 0.3,
-      max_tokens: 2048,
-    }),
-    cache: "force-cache",
-    next: { revalidate: ANSWER_CACHE_SECONDS },
-    signal: AbortSignal.timeout(25_000),
-  });
-
-  if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
-
-  const text = completionText((await response.json()) as OpenRouterCompletion);
-  if (!text) throw new Error("OpenRouter returned an empty answer");
-  return text;
+  let lastError: unknown = new Error("no models configured");
+  for (const modelId of modelChain) {
+    try {
+      // Next caches this POST by its URL, headers, and body. The body includes
+      // the model, canonical question, and complete portfolio prompt, so an
+      // updated profile or a changed model naturally gets its own cache entry.
+      return await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: openRouterHeaders(apiKey),
+        body: JSON.stringify({
+          model: modelId,
+          messages: [
+            { role: "system", content: ASSISTANT_SYSTEM_PROMPT },
+            { role: "user", content: question },
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+        }),
+        cache: "force-cache",
+        next: { revalidate: ANSWER_CACHE_SECONDS },
+        signal: AbortSignal.timeout(25_000),
+      }).then(async (response) => {
+        if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
+        const text = completionText((await response.json()) as OpenRouterCompletion);
+        if (!text) throw new Error("OpenRouter returned an empty answer");
+        return text;
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 export async function POST(req: Request) {
@@ -179,19 +206,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const modelId = process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL;
+  // A pinned OPENROUTER_MODEL replaces the chain entirely; otherwise the free
+  // models are tried in order, both for cached standalone answers and streams.
+  const modelChain = process.env.OPENROUTER_MODEL
+    ? [process.env.OPENROUTER_MODEL]
+    : FREE_MODEL_CHAIN;
+
   const cacheableQuestion = getCacheableQuestion(messages);
   if (cacheableQuestion) {
     try {
       return cachedTextResponse(
         await getCachedAnswer({
           apiKey: openRouterKey,
-          modelId,
+          modelChain,
           question: cacheableQuestion,
         }),
       );
     } catch {
-      return errorResponse(502, "Nova couldn't reach her answer service. Please try again.");
+      return errorResponse(502, "Nova's circuits need a coffee break ☕ — please try again in a moment.");
     }
   }
 
@@ -203,7 +235,7 @@ export async function POST(req: Request) {
       "HTTP-Referer": process.env.SITE_URL ?? "https://amansinganamala.vercel.app",
       "X-OpenRouter-Title": "Aman Singanamala - Portfolio",
     },
-  }).chatModel(modelId);
+  }).chatModel(modelChain[0]);
 
   const result = streamText({
     model,
