@@ -28,13 +28,17 @@ export const maxDuration = 30;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /**
- * Free-tier model chain, tried in order on 429 (rate limited). All are $0
- * prompt/completion on OpenRouter:
+ * Free-tier model chain, tried in order on 429 (rate limited) or 404
+ * (retired model). All are $0 prompt/completion on OpenRouter:
  *  - Nemotron 3 Ultra: NVIDIA's flagship free model, 1M context, strong
  *    instruction following — best markdown quality of the free roster.
  *  - Qwen 3.8 27B: lighter, fast, reliable — first fallback.
  *  - Gemma 4 31B: Google's free option — last resort before the error banner.
  * OPENROUTER_MODEL overrides the whole chain when set (single model).
+ *
+ * The chat only works while at least one of these is live: free models come
+ * and go on OpenRouter, so a 404 here should prompt replacing the dead ID
+ * with a current one from https://openrouter.ai/models?max_price=0.
  */
 const FREE_MODEL_CHAIN = [
   "nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -46,12 +50,34 @@ const FREE_MODEL_CHAIN = [
 const MAX_MESSAGES = 16;
 /** A JSON body bigger than this is abusive (16 turns of prose is far smaller). */
 const MAX_BODY_BYTES = 256 * 1024;
-/** A same-origin POST is expected; cross-site calls get logged and bounced. */
-const ALLOWED_ORIGINS = new Set(
-  [process.env.SITE_URL ?? "https://amansinganamala.vercel.app", "http://localhost:3000"].flatMap(
-    (url) => [url, url.replace(/^https?:\/\//, "")],
-  ),
-);
+
+/**
+ * The chat only ever posts from the portfolio itself, so anything else is
+ * scripted abuse (bots scanning for open AI proxies).
+ *
+ * Matched on HOST, not exact origin string: `localhost:3000` is Next's default
+ * but `next dev` picks a random free port when 3000 is taken (this exact
+ * problem silently 403'd every local chat), and Vercel preview deployments
+ * live under project-specific `*.vercel.app` subdomains. Anchors and paths
+ * never reach the server — the Origin header is scheme + host + port only.
+ * A missing Origin (curl, server-to-server) is allowed through and still
+ * faces the rate limit; blocking it would break the cached-answer path.
+ */
+const SITE_ORIGIN = process.env.SITE_URL ?? "https://amansinganamala.vercel.app";
+
+function isAllowedOrigin(origin: string) {
+  let hostname: string;
+  try {
+    // hostname (not host): the port must never leak into the comparisons,
+    // or `localhost:3210` would fail a `localhost` check.
+    hostname = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
+  const siteHostname = new URL(SITE_ORIGIN).hostname;
+  if (hostname === siteHostname || hostname.endsWith(".vercel.app")) return true;
+  return hostname === "localhost" || hostname.endsWith(".localhost") || hostname.startsWith("127.0.0.1");
+}
 
 const RATE_LIMIT_MAX = 12;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -182,9 +208,25 @@ function completionText(payload: OpenRouterCompletion) {
 }
 
 /**
- * Answer a standalone question, walking the free-model chain on 429. Only the
- * final, successful body is handed to Next's force-cache — failed attempts are
- * never cached, so a model recovering from rate-limit pressure heals itself.
+ * One structured line per exhausted chain, naming which model failed how —
+ * a 404 means the free model was retired (swap in a current ID), a 429 means
+ * shared free-tier pressure. Message contents are never logged.
+ */
+function logUpstreamFailure(statuses: string[]) {
+  console.warn(
+    JSON.stringify({
+      event: "nova_upstream_exhausted",
+      models: statuses,
+    }),
+  );
+}
+
+/**
+ * Answer a standalone question, walking the free-model chain on 429 (rate
+ * limit) or 404 (retired model). Other statuses and network errors end the
+ * walk — retrying a 500 elsewhere rarely helps inside a 25s budget. Only the
+ * final, successful body is handed to Next's force-cache — failed attempts
+ * are never cached, so a model recovering from pressure heals itself.
  */
 async function getCachedAnswer({
   apiKey,
@@ -196,6 +238,8 @@ async function getCachedAnswer({
   question: string;
 }) {
   let lastError: unknown = new Error("no models configured");
+  const statuses: string[] = [];
+
   for (const modelId of modelChain) {
     try {
       // Next caches this POST by its URL, headers, and body. The body includes
@@ -217,6 +261,7 @@ async function getCachedAnswer({
         next: { revalidate: ANSWER_CACHE_SECONDS },
         signal: AbortSignal.timeout(25_000),
       }).then(async (response) => {
+        statuses.push(`${modelId}:${response.status}`);
         if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
         const text = completionText((await response.json()) as OpenRouterCompletion);
         if (!text) throw new Error("OpenRouter returned an empty answer");
@@ -224,8 +269,14 @@ async function getCachedAnswer({
       });
     } catch (error) {
       lastError = error;
+      const retriable =
+        error instanceof Error &&
+        (error.message.includes("429") || error.message.includes("404"));
+      if (!retriable) break;
     }
   }
+
+  logUpstreamFailure(statuses);
   throw lastError;
 }
 
@@ -235,7 +286,7 @@ export async function POST(req: Request) {
   // Same-origin gate: the chat only ever posts from the portfolio itself, so
   // anything else is scripted abuse (bots scanning for open AI proxies).
   const origin = req.headers.get("origin");
-  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+  if (origin && !isAllowedOrigin(origin)) {
     logRejection(req, ip, "cross_origin", origin);
     return errorResponse(403, "I only answer questions asked from my home site.");
   }
@@ -293,7 +344,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const model = createOpenAICompatible({
+  const openrouter = createOpenAICompatible({
     name: "openrouter",
     baseURL: OPENROUTER_BASE_URL,
     apiKey: openRouterKey,
@@ -301,23 +352,53 @@ export async function POST(req: Request) {
       "HTTP-Referer": process.env.SITE_URL ?? "https://amansinganamala.vercel.app",
       "X-OpenRouter-Title": "Aman Singanamala - Portfolio",
     },
-  }).chatModel(modelChain[0]);
-
-  const result = streamText({
-    model,
-    system: ASSISTANT_SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages.slice(-MAX_MESSAGES)),
-    temperature: 0.3,
-    // Hard stop under the 30s function limit: a queued or stalled provider
-    // surfaces as the panel's friendly error banner instead of an endless
-    // spinner.
-    abortSignal: AbortSignal.timeout(25_000),
-    // Roomy enough for a reasoning model's hidden thinking plus a concise
-    // visible reply; the system prompt is what keeps the reply short.
-    maxOutputTokens: 2048,
   });
 
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
-  });
+  // The streaming path walks the chain too. Each attempt must fail BEFORE any
+  // token has been shown to the visitor, so a 429/404 on one model can hand
+  // over to the next cleanly; once tokens are flowing, errors surface as the
+  // panel's friendly banner instead of a mid-sentence restart.
+  let lastError: unknown = new Error("no models configured");
+  for (const modelId of modelChain) {
+    const result = streamText({
+      model: openrouter.chatModel(modelId),
+      system: ASSISTANT_SYSTEM_PROMPT,
+      messages: await convertToModelMessages(messages.slice(-MAX_MESSAGES)),
+      temperature: 0.3,
+      // Hard stop under the 30s function limit: a queued or stalled provider
+      // surfaces as the panel's friendly error banner instead of an endless
+      // spinner.
+      abortSignal: AbortSignal.timeout(25_000),
+      // Roomy enough for a reasoning model's hidden thinking plus a concise
+      // visible reply; the system prompt is what keeps the reply short.
+      maxOutputTokens: 2048,
+    });
+
+    try {
+      // The response promise settles as soon as the upstream answers: rejected
+      // for a refused request (429 quota, 404 retired model, 401 bad key),
+      // resolved once the response headers arrive — before any visible token
+      // is produced. That makes it the clean handover point between models.
+      await result.response;
+      return createUIMessageStreamResponse({
+        stream: toUIMessageStream({ stream: result.stream }),
+      });
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const retriable = message.includes("429") || message.includes("404");
+      console.warn(
+        JSON.stringify({
+          event: "nova_stream_model_failed",
+          model: modelId,
+          retriable,
+          error: message.slice(0, 200),
+        }),
+      );
+      if (!retriable) break;
+    }
+  }
+
+  logUpstreamFailure(modelChain.map((modelId) => `${modelId}:stream-failed`));
+  throw lastError;
 }
