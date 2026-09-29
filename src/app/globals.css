@@ -149,25 +149,29 @@
   }
 }
 
-/* Aurora drift: the page's two gradient light sources slide along their own
-   axes very slowly. Animating background-position (not transform) keeps the
-   glows anchored while they breathe; the steps are far enough apart that the
-   motion reads as slow drifting, not pulsing. */
+/* Aurora drift: the gradient light sources slide along their own axes very
+   slowly. Animating background-position (not transform) keeps the glows
+   anchored while they breathe; the steps are far enough apart that the motion
+   reads as slow drifting, not pulsing. Three layers: two top glows and the
+   bottom glow, so positions pair 1:1 with the image layers on body::before. */
 @keyframes aurora-drift {
   0% {
     background-position:
       top center,
-      top center;
+      top center,
+      center bottom;
   }
   50% {
     background-position:
       -6rem -2rem,
-      5rem 1rem;
+      5rem 1rem,
+      -4rem 1.5rem;
   }
   100% {
     background-position:
       top center,
-      top center;
+      top center,
+      center bottom;
   }
 }
 
@@ -193,11 +197,20 @@
   body {
     @apply bg-background text-foreground;
     text-rendering: optimizeLegibility;
-    /* Aurora wash: two brand-tinted light sources bleeding in from the top of
-       the page — no texture, just the color. The base stays `background`, so
-       every surface that paints solid background (the resume sheet, phone
-       chat) still wins, and content scrolls over a lit canvas instead of dead
-       white/black. Two glows, so the animation can move them independently. */
+  }
+
+  /* The aurora itself lives on a fixed full-viewport layer behind the content
+     (z-index -1 paints it above the canvas background, below everything
+     else), so the tint covers the WHOLE screen at every scroll position —
+     not just the document top, which is where a body-anchored gradient
+     scrolls away from. A bottom glow mirrors the top pair so the page feels
+     wrapped in light, not lit from one edge. Paint-only: no layout cost. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
       radial-gradient(
         42rem 30rem at 12% -8%,
@@ -208,15 +221,18 @@
         50rem 34rem at 88% -12%,
         color-mix(in oklab, var(--brand) 12%, transparent),
         transparent 70%
+      ),
+      radial-gradient(
+        48rem 34rem at 50% 118%,
+        color-mix(in oklab, var(--brand) 10%, transparent),
+        transparent 72%
       );
     background-repeat: no-repeat;
-    /* Glows anchor to the viewport top and drift on the aurora animation. */
-    background-position: top center, top center;
     animation: aurora-drift 46s ease-in-out infinite;
   }
 
   /* Dark mode: denser chroma to survive the dark base. */
-  .dark body {
+  .dark body::before {
     background-image:
       radial-gradient(
         42rem 30rem at 12% -8%,
@@ -227,6 +243,11 @@
         50rem 34rem at 88% -12%,
         color-mix(in oklab, var(--brand) 16%, transparent),
         transparent 70%
+      ),
+      radial-gradient(
+        48rem 34rem at 50% 118%,
+        color-mix(in oklab, var(--brand) 14%, transparent),
+        transparent 72%
       );
   }
 
@@ -243,7 +264,7 @@
 
   /* The aurora drift is ambient decoration — under reduced motion the wash
      stays exactly where the keyframes' 0% puts it, just frozen. */
-  body {
+  body::before {
     animation: none;
   }
 
@@ -271,6 +292,11 @@
        shorthand also clears the aurora background-image. */
     background: white !important;
     color: black !important;
+  }
+
+  /* The fixed aurora layer must never leak into the printed sheet. */
+  body::before {
+    display: none !important;
   }
 
   /* Dark theme flips every token; under print they all collapse to ink. */
