@@ -54,10 +54,12 @@ function MessageBubble({
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm",
+          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
           isUser
-            ? "rounded-br-sm bg-brand text-white"
-            : "rounded-bl-sm border border-border bg-card",
+            ? // A saturated bubble reads best solid; the ring adds the glass
+              // sheen so it sits in the same material language.
+              "rounded-br-sm bg-brand text-white shadow-md shadow-brand/25 ring-1 ring-inset ring-white/20"
+            : "rounded-bl-sm border border-border/80 bg-card/80 shadow-sm backdrop-blur-sm",
         )}
       >
         {/* Markdown renders live while streaming; the caret rides on the last
@@ -218,19 +220,36 @@ export function ChatPanel({
       className={cn(
         // z-50, above the back-to-top button and the dock (both z-40), which it
         // covers at phone widths — so it is opaque there rather than letting
-        // them show through, and translucent only from md up, where it floats
-        // over the empty margin instead of over controls.
-        "fixed z-50 flex max-h-[min(30rem,70dvh)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-lg shadow-black/5 max-md:bg-background md:bg-background/90 md:backdrop-blur transition-[opacity,transform] duration-300 ease-out",
+        // them show through; from md up it turns to frosted glass floating
+        // over the empty margin: translucent, heavily blurred, saturation
+        // boosted so what shows through keeps its color. The inset ring paints
+        // the glass edge highlight the border alone can't.
+        "fixed z-50 flex max-h-[min(30rem,70dvh)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl shadow-black/10 ring-1 ring-inset ring-white/10 transition-[opacity,transform] duration-300 ease-out max-md:bg-background md:bg-background/72 md:backdrop-blur-2xl md:backdrop-saturate-150",
         placement,
         open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >
-      <header className="flex items-center justify-between border-b border-border px-3 py-2.5">
+      {/* Aurora: a brand-tinted glow bleeding through the glass at the top.
+          Decorative only — no pointer events, clipped by the rounded shell. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-20 left-1/2 h-36 w-3/4 -translate-x-1/2 rounded-full bg-brand/15 blur-3xl"
+      />
+
+      <header className="flex items-center justify-between border-b border-border/70 bg-background/40 px-3 py-2.5 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-2.5">
           {/* On a phone the docked mascot sits behind this sheet, so Nova gets a
               second, chat-native stage here rather than disappearing mid-chat. */}
-          <div className="relative size-10 shrink-0 overflow-hidden rounded-xl border border-brand/20 bg-brand-soft/50 shadow-sm">
+          <div className="relative size-10 shrink-0 overflow-hidden rounded-xl border border-brand/25 bg-brand-soft/60 shadow-sm ring-1 ring-inset ring-white/20">
             <Mascot className="size-full" expression={mascotExpression} />
+            {/* Shimmer sweeps only while Nova is streaming; status="submitted"
+                (thinking, nothing on screen yet) stays still. */}
+            {status === "streaming" && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/2 animate-[nova-shimmer_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent"
+              />
+            )}
             <span
               aria-hidden
               className={cn(
@@ -273,7 +292,7 @@ export function ChatPanel({
 
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto px-4 py-4 overscroll-contain"
+        className="flex-1 space-y-3 overflow-y-auto px-4 py-4 overscroll-contain [scrollbar-width:thin]"
       >
         {messages.length === 0 && (
           <div className="space-y-3 pt-1">
@@ -332,7 +351,7 @@ export function ChatPanel({
 
         {status === "submitted" && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm border border-border bg-card px-3.5 py-2.5">
+            <div className="rounded-2xl rounded-bl-sm border border-border/80 bg-card/80 px-3.5 py-2.5 backdrop-blur-sm">
               <span className="flex gap-1">
                 {[0, 1, 2].map((dot) => (
                   <span
@@ -363,13 +382,13 @@ export function ChatPanel({
       </div>
 
       <form
-        className="border-t border-border p-2"
+        className="border-t border-border/70 bg-background/40 p-2 backdrop-blur-sm"
         onSubmit={(event) => {
           event.preventDefault();
           submit(input);
         }}
       >
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card px-2 py-1.5 transition-colors focus-within:border-brand/50">
+        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card/80 px-2 py-1.5 shadow-sm backdrop-blur-sm ring-brand/20 transition-[color,border-color,box-shadow] focus-within:border-brand/50 focus-within:ring-2">
           <textarea
             ref={textareaRef}
             value={input}
@@ -385,7 +404,7 @@ export function ChatPanel({
               type="button"
               onClick={() => stop()}
               aria-label="Stop generating"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground"
             >
               <Square className="size-3 fill-current" />
             </button>
@@ -394,7 +413,7 @@ export function ChatPanel({
               type="submit"
               disabled={!input.trim()}
               aria-label="Send message"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-brand/30 ring-1 ring-inset ring-white/20 transition-all hover:shadow-lg hover:shadow-brand/40 disabled:opacity-40 disabled:shadow-none"
             >
               <ArrowUp className="size-4" />
             </button>
@@ -412,7 +431,7 @@ export function ChatPanel({
             exit={{ opacity: 0, y: 8 }}
             className="absolute inset-x-2 bottom-16 z-10"
           >
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/90 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-md">
               <p className="text-[12px] text-muted-foreground">Conversation cleared</p>
               <button
                 type="button"

@@ -135,6 +135,20 @@
   }
 }
 
+/* Nova's avatar shimmer: a soft light band sweeping diagonally across the
+   chat-stage avatar while she streams an answer. Painted by the component as
+   a gradient span; this just moves it. Respects reduced motion via the
+   global override below. */
+@keyframes nova-shimmer {
+  0% {
+    transform: translateX(-130%) skewX(-12deg);
+  }
+  60%,
+  100% {
+    transform: translateX(130%) skewX(-12deg);
+  }
+}
+
 /* Theme switch: we animate the incoming snapshot ourselves, so kill the default cross-fade. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
