@@ -368,7 +368,7 @@ export function ChatPanel({
         {error && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px]">
             <span className="text-amber-700 dark:text-amber-400">
-              Nova couldn&apos;t answer just now. The key may be missing or rate-limited.
+              Nova&apos;s circuits need a coffee break ☕ — ask me again in a moment!
             </span>
             <button
               type="button"
