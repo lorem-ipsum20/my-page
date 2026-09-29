@@ -139,9 +139,21 @@ export function ChatPanel({
   // Restore the previous conversation once, on mount. useChat starts with
   // initialMessages already, so the first paint is correct and hydration-safe.
   const busy = status === "submitted" || status === "streaming";
+
+  // Waiting covers BOTH quiet windows: after the request is sent but before
+  // the response opens, and after the stream opens but before the first text
+  // token lands. Free reasoning models can sit silent for many seconds in the
+  // second window (status is already "streaming", so the dots must not vanish
+  // there), which is exactly the gap that looked like a frozen chat.
+  const lastMessage = messages.at(-1);
+  const hasReplyText =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts.some((part) => part.type === "text" && part.text.trim());
+  const waitingForReply = status === "submitted" || (status === "streaming" && !hasReplyText);
+
   const mascotExpression: MascotExpression = error
     ? "concerned"
-    : status === "submitted"
+    : waitingForReply
       ? "thinking"
       : status === "streaming"
         ? "speaking"
@@ -278,7 +290,11 @@ export function ChatPanel({
           <div className="min-w-0">
             <p className="text-[13px] font-medium">Nova</p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {busy ? "Sharing an answer…" : "Ask about Aman’s work"}
+              {waitingForReply
+                ? "Thinking…"
+                : busy
+                  ? "Sharing an answer…"
+                  : "Ask about Aman’s work"}
             </p>
           </div>
         </div>
@@ -366,7 +382,10 @@ export function ChatPanel({
           });
         })}
 
-        {status === "submitted" && (
+        {/* Shown until the reply actually has visible text — not just while
+            "submitted" — so the dots hold through the silent streaming gap
+            instead of blinking out the moment the response headers arrive. */}
+        {waitingForReply && (
           <div className="flex justify-start">
             <div className="rounded-2xl rounded-bl-sm border border-border/80 bg-card/80 px-3.5 py-2.5 backdrop-blur-sm">
               <span className="flex gap-1">
