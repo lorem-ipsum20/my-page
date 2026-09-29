@@ -149,6 +149,28 @@
   }
 }
 
+/* Aurora drift: the page's two gradient light sources slide along their own
+   axes very slowly. Animating background-position (not transform) keeps the
+   glows anchored while they breathe; the steps are far enough apart that the
+   motion reads as slow drifting, not pulsing. */
+@keyframes aurora-drift {
+  0% {
+    background-position:
+      top center,
+      top center;
+  }
+  50% {
+    background-position:
+      -6rem -2rem,
+      5rem 1rem;
+  }
+  100% {
+    background-position:
+      top center,
+      top center;
+  }
+}
+
 /* Theme switch: we animate the incoming snapshot ourselves, so kill the default cross-fade. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -171,6 +193,41 @@
   body {
     @apply bg-background text-foreground;
     text-rendering: optimizeLegibility;
+    /* Aurora wash: two brand-tinted light sources bleeding in from the top of
+       the page — no texture, just the color. The base stays `background`, so
+       every surface that paints solid background (the resume sheet, phone
+       chat) still wins, and content scrolls over a lit canvas instead of dead
+       white/black. Two glows, so the animation can move them independently. */
+    background-image:
+      radial-gradient(
+        42rem 30rem at 12% -8%,
+        color-mix(in oklab, var(--brand) 16%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        50rem 34rem at 88% -12%,
+        color-mix(in oklab, var(--brand) 12%, transparent),
+        transparent 70%
+      );
+    background-repeat: no-repeat;
+    /* Glows anchor to the viewport top and drift on the aurora animation. */
+    background-position: top center, top center;
+    animation: aurora-drift 46s ease-in-out infinite;
+  }
+
+  /* Dark mode: denser chroma to survive the dark base. */
+  .dark body {
+    background-image:
+      radial-gradient(
+        42rem 30rem at 12% -8%,
+        color-mix(in oklab, var(--brand) 22%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        50rem 34rem at 88% -12%,
+        color-mix(in oklab, var(--brand) 16%, transparent),
+        transparent 70%
+      );
   }
 
   ::selection {
@@ -182,6 +239,12 @@
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  /* The aurora drift is ambient decoration — under reduced motion the wash
+     stays exactly where the keyframes' 0% puts it, just frozen. */
+  body {
+    animation: none;
   }
 
   *,
@@ -204,7 +267,8 @@
 
   html,
   body {
-    /* The sheet prints black-on-white whatever theme the viewer is in. */
+    /* The sheet prints black-on-white whatever theme the viewer is in; the
+       shorthand also clears the aurora background-image. */
     background: white !important;
     color: black !important;
   }
