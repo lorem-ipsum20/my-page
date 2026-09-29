@@ -9,6 +9,8 @@ import { SUGGESTED_QUESTIONS } from "@/lib/assistant";
 import { profile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Mascot, type MascotExpression } from "@/components/mascot/mascot";
+import { emitCue, emitVoice } from "@/components/mascot/nova-bus";
+import { SCOPE_REFUSAL_TEXT, UNKNOWN_REPLY_TEXT } from "@/lib/assistant";
 import { Markdown } from "./markdown";
 
 const STORAGE_KEY = "nova-chat:v1";
@@ -116,12 +118,62 @@ export function ChatPanel({
           } catch {
             // Private mode or full quota: persistence is best-effort.
           }
+          // One-shot reaction to the kind of answer: refusals and unknowns get
+          // a puzzled tilt, real answers a quick proud bounce.
+          const lastReply = [...finalMessages]
+            .reverse()
+            .find((m) => m.role === "assistant");
+          const text = (lastReply?.parts ?? [])
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("")
+            .trim();
+          emitCue(
+            text === SCOPE_REFUSAL_TEXT ||
+              text === `${SCOPE_REFUSAL_TEXT}.` ||
+              text.startsWith(UNKNOWN_REPLY_TEXT)
+              ? "confused"
+              : "happy",
+          );
         },
       }),
   );
 
   const { messages, sendMessage, setMessages, clearError, status, error, regenerate, stop } =
     useChat({ chat });
+
+  // The panel owns the chat stream, so it also narrates it to the mascots on
+  // the shared bus: a startle when the visitor commits to a question, and
+  // per-delta voice energy while the answer streams.
+  useEffect(() => {
+    if (status === "submitted") emitCue("startle");
+  }, [status]);
+
+  // Speech energy rides the same re-renders the stream already causes: each
+  // time the streaming reply's text grows, one pulse goes out sized by the
+  // chunk that arrived, so the mascot's mouth moves with the real words.
+  // Derived from `messages` (not `lastMessage`, declared further down) so the
+  // effect has no declaration-order coupling.
+  const streamingTextLength =
+    status === "streaming"
+      ? ([...messages]
+          .reverse()
+          .find((message) => message.role === "assistant")
+          ?.parts.reduce(
+            (total, part) => (part.type === "text" ? total + part.text.length : total),
+            0,
+          ) ?? 0)
+      : 0;
+  const previousTextLength = useRef(0);
+  useEffect(() => {
+    if (streamingTextLength === 0) {
+      previousTextLength.current = 0;
+      return;
+    }
+    const chunk = Math.max(0, streamingTextLength - previousTextLength.current);
+    previousTextLength.current = streamingTextLength;
+    if (chunk > 0) emitVoice(Math.min(1, 0.45 + chunk / 90));
+  }, [streamingTextLength]);
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);

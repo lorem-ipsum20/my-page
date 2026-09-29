@@ -48,10 +48,20 @@ export type MascotFrame = {
    * while the canvas is off screen can never be replayed late.
    */
   wave?: boolean;
+  /**
+   * Speech energy (0..1) from the live chat stream. A fresh value primes the
+   * mouth for a beat; its absence lets the mouth decay back to the idle
+   * cadence, so the lips visibly close during a slow stream's silences.
+   */
+  voice?: number;
 };
 
 /** Small, readable states that map directly to the chat's lifecycle. */
 export type MascotExpression = "idle" | "listening" | "thinking" | "speaking" | "concerned";
+
+/** One-shot reactions layered on top of whatever the base expression is. */
+export type MascotCue = "startle" | "happy" | "confused";
+
 
 export type MascotHandle = {
   canvas: HTMLCanvasElement;
@@ -60,6 +70,8 @@ export type MascotHandle = {
   setPalette: (palette: MascotPalette) => void;
   setReduceMotion: (reduce: boolean) => void;
   setExpression: (expression: MascotExpression) => void;
+  /** Fires a one-shot reaction, layered on the base expression. */
+  cue: (cue: MascotCue) => void;
   dispose: () => void;
 };
 
@@ -358,6 +370,24 @@ export function createMascot(): MascotHandle {
   let waveWobble = 0;
   let expression: MascotExpression = "idle";
 
+  // One-shot cue state: the request is latched into an active cue on the frame
+  // that consumes it, mirroring how the wave one-shot works. `side` alternates
+  // so repeated confused tilts don't always lean the same way.
+  let cueRequest: MascotCue | null = null;
+  let activeCue: { kind: MascotCue; startedAt: number; side: number } | null = null;
+  let cueCount = 0;
+
+  // Speech energy from the live stream. A freshly fed value takes a short
+  // lease (voiceHoldUntil) so the mouth stays primed between quick deltas but
+  // closes during the silences of a slow stream.
+  let voiceTarget = 0;
+  let voiceSmooth = 0;
+  let voiceHoldUntil = -1;
+  // Whether this speaking turn has received live energy at all. Cached answers
+  // stream in one silent blob, so until the first delta lands the sine cadence
+  // stands in; once it has, silences must close the mouth, not fake it.
+  let voiceFedThisTurn = false;
+
   const setEyeScaleY = (scale: number) => {
     const clamped = clamp(scale, 0, 1.6);
     eyeLeft.scale.y = clamped;
@@ -402,6 +432,9 @@ export function createMascot(): MascotHandle {
     const { elapsed, delta, pointer } = frame;
 
     if (reduceMotion) {
+      // One-shot reactions are motion, so they are dropped rather than
+      // queued: the settled pose stays a resting one.
+      cueRequest = null;
       settlePose(delta);
       // No animation is allowed, but the selected expression remains readable.
       renderer.render(scene, camera);
@@ -421,6 +454,72 @@ export function createMascot(): MascotHandle {
     // unwinds on its own once they stop, with no extra event to listen for.
     scrollSmooth = damp(scrollSmooth, clamp(frame.scrollLook, -1, 1), 5.5, delta);
 
+    // One-shot reaction cues, latched wave-style: the request survives until
+    // the frame that consumes it, and the host drops ones asked for while the
+    // canvas is off screen, so nothing replays late.
+    if (cueRequest) {
+      activeCue = {
+        kind: cueRequest,
+        startedAt: elapsed,
+        side: cueCount % 2 === 0 ? 1 : -1,
+      };
+      cueCount += 1;
+      cueRequest = null;
+    }
+
+    // Each cue eases in and out so nothing snaps, and contributes additive
+    // offsets on top of the base expression below.
+    let cueEye = 1;
+    let cueLift = 0;
+    let cuePitch = 0;
+    let cueTilt = 0;
+    let cueSmile = 0;
+    let cueMouth = 0;
+    let cueCheeks = 0;
+    let cueGlow = 1;
+    let confusedGlow = 0;
+    if (activeCue) {
+      const t = elapsed - activeCue.startedAt;
+      const total =
+        activeCue.kind === "startle" ? 0.6 : activeCue.kind === "happy" ? 1.5 : 1.6;
+      if (t >= total) {
+        activeCue = null;
+      } else if (activeCue.kind === "startle") {
+        // A quick jump and eye-pop, like bracing for the question.
+        const w = smoothstep(0, 0.06, t) * (1 - smoothstep(0.22, total, t));
+        cueEye = 1 + 0.45 * w;
+        cueLift = 0.055 * w;
+        cuePitch = -0.09 * w;
+        cueMouth = 0.35 * w;
+        cueGlow = 1 + 0.35 * w;
+      } else if (activeCue.kind === "happy") {
+        // A squinty grin with a small double hop — proud, not manic.
+        const w = smoothstep(0, 0.16, t) * (1 - smoothstep(0.9, total, t));
+        cueEye = 1 - 0.32 * w;
+        cueLift = 0.045 * w * Math.abs(Math.sin(t * 9));
+        cueSmile = 0.3 * w;
+        cueCheeks = w;
+        cueGlow = 1 + 0.2 * w;
+      } else {
+        // Puzzled: a slow head tilt that alternates sides, flattening mouth,
+        // and an antenna that dims and pulses like a thought re-routing.
+        const w = smoothstep(0, 0.22, t) * (1 - smoothstep(1.0, total, t));
+        cueTilt = 0.17 * w * activeCue.side;
+        cueEye = 1 - 0.14 * w;
+        cuePitch = 0.04 * w;
+        cueSmile = -0.3 * w;
+        confusedGlow = w;
+      }
+    }
+
+    // Live speech energy. Values are fed per stream delta by the host.
+    if (frame.voice !== undefined) {
+      voiceTarget = clamp(frame.voice, 0, 1);
+      voiceHoldUntil = elapsed + 0.35;
+      voiceFedThisTurn = true;
+    }
+    voiceSmooth = damp(voiceSmooth, elapsed > voiceHoldUntil ? 0 : voiceTarget, 14, delta);
+
     // Turn towards the cursor, and pitch with both the cursor and the page.
     // Positive rotation.x tips the crown towards the viewer, so each of these
     // reads as looking down — the eyes lead the head by a hair.
@@ -432,7 +531,7 @@ export function createMascot(): MascotHandle {
     );
     root.rotation.x = damp(
       root.rotation.x,
-      pointerSmooth.y * 0.16 + scrollSmooth * 0.3 + (isThinking ? 0.07 : 0),
+      pointerSmooth.y * 0.16 + scrollSmooth * 0.3 + (isThinking ? 0.07 : 0) + cuePitch,
       3.2,
       delta,
     );
@@ -468,13 +567,18 @@ export function createMascot(): MascotHandle {
           ? Math.sin(elapsed * 3.8) * 0.016
           : 0;
     root.position.y =
-      Math.sin(elapsed * 1.5) * 0.032 + conversationBob + waveLift * 0.045 - scrollSmooth * 0.04;
+      Math.sin(elapsed * 1.5) * 0.032 +
+      conversationBob +
+      waveLift * 0.045 -
+      scrollSmooth * 0.04 +
+      cueLift;
     // Leaning into the raised arm is what makes the wave look intentional.
     root.rotation.z =
       Math.sin(elapsed * 0.85) * 0.028 +
       (isListening ? -0.07 : isConcerned ? 0.07 : 0) +
       (isSpeaking ? Math.sin(elapsed * 5.4) * 0.035 : 0) -
-      waveLift * 0.06;
+      waveLift * 0.06 +
+      cueTilt;
 
     // Breathing: the body squashes a touch on the way down and back on the way up.
     const breath = Math.sin(elapsed * 1.5);
@@ -508,15 +612,34 @@ export function createMascot(): MascotHandle {
     // narrows them a touch, which makes the mouth movement more expressive.
     eyePivot.position.x = pointerSmooth.x * 0.026;
     eyePivot.position.y = -pointerSmooth.y * 0.016 - scrollSmooth * 0.022;
-    const eyeTarget = isThinking ? 1.14 : isListening ? 1.06 : isSpeaking ? 0.94 : 1;
+    const eyeTarget =
+      (isThinking ? 1.14 : isListening ? 1.06 : isSpeaking ? 0.94 : 1) * cueEye;
     setEyeScaleY(damp(eyeLeft.scale.y, eyeTarget, 6, delta));
 
-    const voice = Math.abs(Math.sin(elapsed * 10));
-    smile.scale.y = damp(smile.scale.y, isSpeaking ? 0.65 + voice * 0.2 : isConcerned ? 0.45 : 1, 12, delta);
-    talkingMouth.scale.y = damp(talkingMouth.scale.y, isSpeaking ? 0.28 + voice * 0.62 : 0.001, 12, delta);
+    const voiceSine = Math.abs(Math.sin(elapsed * 10));
+    // Mouth sync: when the stream feeds energy the mouth tracks the real
+    // words (bursts open it, silences close it); otherwise the sine cadence
+    // stands in. Cues ride on top — a startle gasps, a happy answer grins.
+    const speakingOpen = isSpeaking
+      ? voiceFedThisTurn
+        ? 0.06 + voiceSmooth * 0.66
+        : 0.28 + voiceSine * 0.62
+      : 0;
+    talkingMouth.scale.y = damp(
+      talkingMouth.scale.y,
+      Math.max(speakingOpen, cueMouth),
+      12,
+      delta,
+    );
+    smile.scale.y = damp(
+      smile.scale.y,
+      (isSpeaking ? 0.65 + voiceSine * 0.2 : isConcerned ? 0.45 : 1) + cueSmile,
+      12,
+      delta,
+    );
     for (const [index, cheek] of cheekLights.entries()) {
       const cheekPulse = isSpeaking ? 0.72 + Math.abs(Math.sin(elapsed * 10 + index)) * 0.38 : 0.001;
-      cheek.scale.setScalar(damp(cheek.scale.x, cheekPulse, 12, delta));
+      cheek.scale.setScalar(damp(cheek.scale.x, Math.max(cheekPulse, cueCheeks), 12, delta));
     }
 
     // Each chat state gets a different signal language: fast for thinking,
@@ -531,6 +654,14 @@ export function createMascot(): MascotHandle {
       antennaGlow.scale.setScalar(
         1 + Math.sin(elapsed * (3.2 + waveLift * 7)) * 0.075 + waveLift * 0.1,
       );
+    }
+    if (confusedGlow > 0.05) {
+      // Puzzled: the glow dims and pulses slowly, like a thought re-routing.
+      antennaGlow.scale.setScalar(0.86 + Math.sin(elapsed * 2.2) * 0.09 * confusedGlow);
+    } else if (cueGlow !== 1) {
+      // Startle/happy only modulate the base glow; multiplyScalar is safe
+      // because the chain above resets the scale every frame.
+      antennaGlow.scale.multiplyScalar(cueGlow);
     }
 
     // Blink cycle.
@@ -574,15 +705,24 @@ export function createMascot(): MascotHandle {
       reduceMotion = reduce;
       if (reduce) {
         blinkStartedAt = -1;
-        // Drop any wave in flight so the settled pose is a resting one.
+        // Drop any wave or cue in flight so the settled pose is a resting one.
         waveStartedAt = -1;
         waveLift = 0;
         waveWobble = 0;
+        activeCue = null;
+        cueRequest = null;
+        voiceTarget = 0;
+        voiceSmooth = 0;
+        voiceHoldUntil = -1;
+        voiceFedThisTurn = false;
         setEyeScaleY(1);
       }
     },
     setExpression(value) {
       expression = value;
+    },
+    cue(kind) {
+      cueRequest = kind;
     },
     dispose() {
       for (const geometry of geometries) geometry.dispose();

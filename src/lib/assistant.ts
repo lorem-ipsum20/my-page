@@ -62,6 +62,15 @@ const SCOPE_REFUSAL =
 /** Used verbatim when the question is about Aman but the facts don't cover it. */
 const UNKNOWN_REPLY = "I don't have that information.";
 
+/**
+ * Replies the companion reacts to with a one-shot animation: a confused tilt
+ * for refusals and unknowns, a happy bounce for anything else. The chat panel
+ * matches the finished text against these; the same strings anchor the model's
+ * behavior in the prompt above, so both stay truthful by construction.
+ */
+export const SCOPE_REFUSAL_TEXT = SCOPE_REFUSAL;
+export const UNKNOWN_REPLY_TEXT = UNKNOWN_REPLY;
+
 export const ASSISTANT_SYSTEM_PROMPT = `You are Nova, the small robot who answers questions on Aman Singanamala's portfolio website. You represent Aman and you exist for exactly one purpose: answering questions about his professional profile.
 
 ## Scope

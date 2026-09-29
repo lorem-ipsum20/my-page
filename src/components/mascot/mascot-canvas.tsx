@@ -9,6 +9,7 @@ import {
   type MascotExpression,
   type MascotHandle,
 } from "./character";
+import { onCue, onVoice } from "./nova-bus";
 import { cn } from "@/lib/utils";
 
 type LoopControls = {
@@ -71,6 +72,9 @@ export function MascotCanvas({
     let scrollDelta = 0;
     let lastScrollY = window.scrollY;
     let wavePending = false;
+    // Latest voice pulse from the chat stream since the last frame; consumed
+    // by the render call and reset, so bursts collapse to one sample.
+    let latestVoice: number | undefined = undefined;
 
     const pointer = { x: 0, y: 0 };
 
@@ -124,8 +128,12 @@ export function MascotCanvas({
           pointer,
           scrollLook,
           wave: wavePending,
+          voice: latestVoice,
         });
         wavePending = false;
+        // Voice energy is consumed per frame: each render needs the freshest
+        // value, and a stale pulse must not re-open the mouth next frame.
+        latestVoice = undefined;
       };
 
       const stopLoop = () => {
@@ -224,7 +232,17 @@ export function MascotCanvas({
 
       setReady(true);
 
+      // Reactions and speech energy arrive on the shared bus (fired from the
+      // chat panel), so both Nova canvases — the docked companion and the chat
+      // header stage — react identically without prop threading.
+      const offCue = onCue((cue) => handle.cue(cue));
+      const offVoice = onVoice((energy) => {
+        latestVoice = energy;
+      });
+
       teardown = () => {
+        offCue();
+        offVoice();
         stopLoop();
         controlsRef.current = null;
         resizeObserver.disconnect();
