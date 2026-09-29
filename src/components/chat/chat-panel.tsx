@@ -1,14 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
+import { motion, AnimatePresence } from "motion/react";
+import { Chat, useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { ArrowUp, RotateCcw, Square, X } from "lucide-react";
+import { ArrowUp, RotateCcw, Square, Trash2, X } from "lucide-react";
 import { SUGGESTED_QUESTIONS } from "@/lib/assistant";
 import { profile } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Mascot, type MascotExpression } from "@/components/mascot/mascot";
 import { Markdown } from "./markdown";
+
+const STORAGE_KEY = "nova-chat:v1";
+const UNDO_MS = 8000;
+
+function loadStoredMessages(): UIMessage[] | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as UIMessage[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter(
+      (message) =>
+        typeof message?.id === "string" &&
+        (message.role === "user" || message.role === "assistant") &&
+        Array.isArray(message.parts),
+    );
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The companion's chat panel.
@@ -64,14 +85,41 @@ export function ChatPanel({
   /** Lets the companion mirror each point in the chat lifecycle. */
   onExpressionChange?: (expression: MascotExpression) => void;
 }) {
-  const { messages, sendMessage, status, error, regenerate, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-  });
+  // The Chat instance is created once and seeds itself from localStorage, so
+  // the first paint already shows the restored conversation (no flash, no
+  // hydration mismatch). useChat receives it via the `chat` option; the finish
+  // callback persists the final history via its own arguments, not closure state.
+  const [chat] = useState(
+    () =>
+      new Chat({
+        id: "nova-portfolio",
+        transport: new DefaultChatTransport({ api: "/api/chat" }),
+        messages: loadStoredMessages() ?? [],
+        onFinish: ({ messages: finalMessages }) => {
+          try {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(finalMessages));
+          } catch {
+            // Private mode or full quota: persistence is best-effort.
+          }
+        },
+      }),
+  );
+
+  const { messages, sendMessage, setMessages, clearError, status, error, regenerate, stop } =
+    useChat({ chat });
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Conversation backup for the undo toast; null when there is nothing to undo.
+  const [undoSnapshot, setUndoSnapshot] = useState<UIMessage[] | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Follow-ups offered between replies: every sample the visitor hasn't asked
+  // yet, shuffled so each visit nudges a different corner of the portfolio.
+  const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
 
+  // Restore the previous conversation once, on mount. useChat starts with
+  // initialMessages already, so the first paint is correct and hydration-safe.
   const busy = status === "submitted" || status === "streaming";
   const mascotExpression: MascotExpression = error
     ? "concerned"
@@ -101,18 +149,53 @@ export function ChatPanel({
     textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
   }, [input]);
 
-  const submit = (text: string) => {
-    const value = text.trim();
-    if (!value || busy) return;
-    setInput("");
-    sendMessage({ text: value });
-  };
-
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       submit(input);
     }
+  };
+
+  // Reset the conversation to Nova's greeting. Aborting first keeps a live
+  // stream from writing into a history we just emptied. The previous turns are
+  // snapshotted so the toast can put them back within the undo window.
+  const clearConversation = () => {
+    if (busy) stop();
+    clearError();
+    if (messages.length === 0) return;
+    setUndoSnapshot(messages);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => {
+      setUndoSnapshot(null);
+      undoTimer.current = null;
+    }, UNDO_MS);
+    setMessages([]);
+    textareaRef.current?.focus();
+  };
+
+  const undoClear = () => {
+    if (undoTimer.current) {
+      clearTimeout(undoTimer.current);
+      undoTimer.current = null;
+    }
+    setMessages(undoSnapshot ?? []);
+    setUndoSnapshot(null);
+  };
+
+  // A suggestion counts as asked only when it reached the wire as a user turn;
+  // cleared or failed attempts keep the chip available.
+  const remainingSuggestions = SUGGESTED_QUESTIONS.filter(
+    (question) => !askedQuestions.includes(question),
+  );
+
+  const submit = (text: string) => {
+    const value = text.trim();
+    if (!value || busy) return;
+    setInput("");
+    if ((remainingSuggestions as readonly string[]).includes(value)) {
+      setAskedQuestions((current) => [...current, value]);
+    }
+    sendMessage({ text: value });
   };
 
   // Phone: a sheet above the section dock, sized by its insets (a width would
@@ -163,14 +246,29 @@ export function ChatPanel({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close chat"
-          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
+        {/* Hidden while there is nothing to clear, so a fresh chat doesn't
+            open with a disabled control. */}
+        <div className="flex items-center gap-0.5">
+          {(messages.length > 0 || error) && (
+            <button
+              type="button"
+              onClick={clearConversation}
+              aria-label="Clear conversation"
+              title="Clear conversation"
+              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close chat"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       </header>
 
       <div
@@ -184,7 +282,7 @@ export function ChatPanel({
               experience, projects or how to reach him.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {SUGGESTED_QUESTIONS.map((question) => (
+              {remainingSuggestions.map((question) => (
                 <button
                   key={question}
                   type="button"
@@ -195,6 +293,23 @@ export function ChatPanel({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Follow-ups once the conversation has started: the samples not yet
+            asked, so chips never re-offer something already answered. */}
+        {messages.length > 0 && !busy && remainingSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {remainingSuggestions.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => submit(question)}
+                className="rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:border-brand/50 hover:text-brand"
+              >
+                {question}
+              </button>
+            ))}
           </div>
         )}
 
@@ -286,6 +401,30 @@ export function ChatPanel({
           )}
         </div>
       </form>
+
+      {/* Undo toast — floats over the composer inside the panel, visible for a
+          short window after clearing so the conversation can be restored. */}
+      <AnimatePresence>
+        {undoSnapshot && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="absolute inset-x-2 bottom-16 z-10"
+          >
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur">
+              <p className="text-[12px] text-muted-foreground">Conversation cleared</p>
+              <button
+                type="button"
+                onClick={undoClear}
+                className="shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-brand hover:bg-brand-soft/50"
+              >
+                Undo
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

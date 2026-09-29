@@ -112,7 +112,7 @@ function InlineLine({
   return <span className="block">{renderInline(text, keyPrefix)}</span>;
 }
 
-type ListItem = { text: string; ordered: boolean; index: number };
+type ListItem = { text: string; ordered: boolean };
 
 function ListView({ items, keyPrefix }: { items: ListItem[]; keyPrefix: string }) {
   const ordered = items[0]?.ordered ?? false;
@@ -171,7 +171,6 @@ function MarkdownImpl({ text, className }: { text: string; className?: string })
       list.push({
         text: (bullet?.[1] ?? ordered![1]),
         ordered: Boolean(ordered),
-        index: list.length,
       });
     } else if (line.trim() === "") {
       flushParagraph();
