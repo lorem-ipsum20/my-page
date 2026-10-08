@@ -25,22 +25,29 @@ export function Hero() {
       <div className="flex items-center gap-4">
         <MascotCompanion fallbackSrc={profile.avatar} fallbackAlt={profile.name} />
 
+        {/*
+          The name is the page's h1. It was a span, which left the strongest
+          heading on the page as "I build scalable, secure web applications." —
+          that phrase is what a search engine saw as the page's subject. On a
+          personal-name query the subject has to be the name. The visual weight
+          is unchanged; only the element is.
+        */}
         <Reveal immediate className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm font-medium">{profile.name}</span>
-          <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
+          <h1 className="text-sm font-medium">{profile.name}</h1>
+          <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
             {profile.role}
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3" />
               {profile.location}
             </span>
-          </span>
+          </p>
         </Reveal>
       </div>
 
       <Reveal immediate delay={0.09}>
-        <h1 className="mt-8 text-[2rem] leading-[1.12] font-medium tracking-tight text-balance sm:text-[2.6rem]">
+        <p className="mt-8 text-[2rem] leading-[1.12] font-medium tracking-tight text-balance sm:text-[2.6rem]">
           I build scalable, secure web applications.
-        </h1>
+        </p>
       </Reveal>
 
       {/* Fixed height so the cycling role never shifts the copy below it. */}

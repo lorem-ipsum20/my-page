@@ -16,15 +16,51 @@ import {
   skillGroups,
   socials,
 } from "@/lib/data";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import Link from "next/link";
 import { socialIconMap } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "@/components/resume/print-button";
 
+const resumeTitle = `Résumé — ${profile.name}`;
+const resumeDescription =
+  `The on-site résumé of ${profile.name}: experience, projects, skills and education, rendered live from the same source as the portfolio — print it or save it as PDF.`;
+
 export const metadata: Metadata = {
-  title: "Résumé — Aman Singanamala",
-  description:
-    "The on-site résumé of Aman Singanamala: experience, projects, skills and education, rendered live from the same source as the portfolio — print it or save it as PDF.",
+  title: resumeTitle,
+  description: resumeDescription,
+  // The root layout's canonical points at the homepage, and this route does
+  // not override it by default — which declared the résumé a duplicate of
+  // `/` and kept it out of the index. Every non-root route must own its URL.
+  alternates: {
+    canonical: `${SITE_URL}/resume`,
+  },
+  // A page that declares `openGraph` replaces the parent's entirely, images
+  // included, so the share card is named explicitly rather than inherited.
+  openGraph: {
+    title: resumeTitle,
+    description: resumeDescription,
+    url: `${SITE_URL}/resume`,
+    siteName: SITE_NAME,
+    type: "profile",
+    locale: "en_IN",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: `${profile.name} — ${profile.role}`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: resumeTitle,
+    description: resumeDescription,
+    site: "@amans3103",
+    creator: "@amans3103",
+    images: ["/opengraph-image"],
+  },
 };
 
 /**

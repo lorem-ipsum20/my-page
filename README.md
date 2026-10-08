@@ -148,6 +148,18 @@ anonymously.
 `projects[0].repoUrl` (DSA Lab) is `null` — the source is private, so the card shows its live
 demo link (codevisualizer.vercel.app) only. Add a public repo URL if one ever exists.
 
+## SEO
+
+`src/lib/site.ts` holds the single canonical origin; canonical tags, Open Graph
+URLs, the sitemap, robots and the JSON-LD graph are all derived from it, so a
+domain move is one line. The home route is a schema.org `ProfilePage` whose
+`mainEntity` is the `Person` emitted site-wide, which is what lets a search
+engine tie this URL to an identity it already knows.
+
+See [SEO.md](SEO.md) for the diagnosis behind the current setup and the off-page
+work — Search Console submission and backlinks — that indexing actually depends
+on.
+
 ## Theming
 
 - `next-themes` with `attribute="class"`, defaulting to the system preference.
@@ -242,6 +254,8 @@ src/
     ui/                            # shadcn: badge, button
   lib/
     data.ts                        # all content
+    site.ts                        # canonical origin, content date, name variants
+    structured-data.ts             # WebSite / Person / ProfilePage JSON-LD graph
     tones.ts                       # colour-coding system
     utils.ts
 public/
