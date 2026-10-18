@@ -127,7 +127,10 @@ Everything lives in **`src/lib/data.ts`**:
 - `experience` — UBS full-time + internship, with the résumé bullets
 - `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps
 - `posts` — the 8 Medium articles from `medium.com/@embed17`
-- `skillGroups`, `certifications`, `education`, `awards`, `interests`
+- `skillGroups`, `education`, `awards`, `interests`
+- `certifications` — every LinkedIn license and certification as a structured record
+  (`issuer`, `issued` / `expires` as ISO months, `credentialId`, verification `url`), rendered
+  on the portfolio, the résumé, the JSON-LD graph and in Nova's knowledge base from one list
 
 ### Updating the résumé (no redeploy)
 

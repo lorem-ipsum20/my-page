@@ -1,4 +1,4 @@
-import { certifications, skillGroups } from "@/lib/data";
+import { skillGroups } from "@/lib/data";
 import { toneDotClasses } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/reveal";
@@ -29,19 +29,6 @@ export function Skills() {
           </Reveal>
         ))}
       </div>
-
-      <Reveal className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-6">
-        <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-          Certified
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          {certifications.map((certification) => (
-            <Tag key={certification} tone="teal">
-              {certification}
-            </Tag>
-          ))}
-        </div>
-      </Reveal>
     </Section>
   );
 }

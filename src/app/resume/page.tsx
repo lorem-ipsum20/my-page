@@ -17,6 +17,7 @@ import {
   socials,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { formatMonth } from "@/lib/utils";
 import Link from "next/link";
 import { socialIconMap } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -75,25 +76,6 @@ export const metadata: Metadata = {
  * margins. Print styles in globals.css force a plain black-on-white sheet
  * regardless of theme.
  */
-const formatDate = (iso: string) => {
-  const [year, month] = iso.split("-");
-  const names = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return `${names[Number(month) - 1]} ${year}`;
-};
-
 export default function ResumePage() {
   const github = socials.find((s) => s.icon === "github");
   const linkedin = socials.find((s) => s.icon === "linkedin");
@@ -233,7 +215,7 @@ export default function ResumePage() {
                     </span>
                   </h3>
                   <span className="font-mono text-[11px] text-muted-foreground">
-                    {formatDate(job.start)} — {job.end === "Present" ? "Present" : formatDate(job.end)}
+                    {formatMonth(job.start)} — {job.end === "Present" ? "Present" : formatMonth(job.end)}
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11.5px] text-muted-foreground">
@@ -319,11 +301,23 @@ export default function ResumePage() {
           <ul className="space-y-1.5">
             {certifications.map((cert) => (
               <li
-                key={cert}
+                key={cert.name}
                 className="flex gap-2.5 text-[12.5px] leading-relaxed text-foreground/85"
               >
                 <span aria-hidden className="mt-[0.55em] h-px w-2.5 shrink-0 bg-border" />
-                {cert}
+                <span>
+                  <span className="font-medium">{cert.name}</span>
+                  <span className="text-muted-foreground">
+                    {" — "}
+                    {cert.issuer}, {formatMonth(cert.issued)}
+                    {cert.expires ? ` (expired ${formatMonth(cert.expires)})` : ""}
+                  </span>
+                  {cert.credentialId ? (
+                    <span className="block font-mono text-[10.5px] break-all text-muted-foreground/80">
+                      Credential ID {cert.credentialId}
+                    </span>
+                  ) : null}
+                </span>
               </li>
             ))}
             {awards.map((award) => (

@@ -392,9 +392,84 @@ export const skillGroups: SkillGroup[] = [
   },
 ];
 
-export const certifications = [
-  "Microsoft Azure Fundamentals (AZ-900)",
-  "UBS Certified Engineer",
+export type Certification = {
+  name: string;
+  issuer: string;
+  /** ISO year-month the credential was issued, e.g. "2026-04". */
+  issued: string;
+  /** ISO year-month the credential stops being valid; absent if it never expires. */
+  expires?: string;
+  credentialId?: string;
+  /** Public verification page, when the issuer provides one. */
+  url?: string;
+  tone: Tone;
+};
+
+/** Licenses & certifications, newest first — mirrors the LinkedIn profile. */
+export const certifications: Certification[] = [
+  {
+    name: "AI Citizen",
+    issuer: "UBS",
+    issued: "2026-04",
+    credentialId: "ac174d6f-1bf9-481c-9f7b-ed0440c2dee3",
+    url: "https://www.credly.com/badges/ac174d6f-1bf9-481c-9f7b-ed0440c2dee3",
+    tone: "teal",
+  },
+  {
+    name: "UBS Certified Engineer",
+    issuer: "UBS",
+    issued: "2025-12",
+    credentialId: "06e7a7ef-baa2-40e8-9b92-f88acca92862",
+    url: "https://www.credly.com/badges/06e7a7ef-baa2-40e8-9b92-f88acca92862",
+    tone: "indigo",
+  },
+  {
+    name: "Microsoft Certified: Azure Fundamentals",
+    issuer: "Microsoft",
+    issued: "2025-10",
+    credentialId: "AB879A54651E59E1",
+    url: "https://learn.microsoft.com/api/credentials/share/en-us/AmanSinganamala-5923/AB879A54651E59E1?sharingId=46941A33397E1502",
+    tone: "cyan",
+  },
+  {
+    name: "AWS Certified Cloud Practitioner",
+    issuer: "Amazon Web Services (AWS)",
+    issued: "2023-07",
+    expires: "2026-07",
+    credentialId: "NSGT8XXKVBQQQPWL",
+    url: "https://aw.certmetrics.com/amazon/public/verification.aspx",
+    tone: "amber",
+  },
+  {
+    name: "AWS Academy Graduate — Cloud Foundations",
+    issuer: "Amazon Web Services (AWS)",
+    issued: "2023-06",
+    credentialId: "a30a60f2-f340-46a4-ad0c-d02af8fe7f30",
+    url: "https://www.credly.com/badges/a30a60f2-f340-46a4-ad0c-d02af8fe7f30",
+    tone: "amber",
+  },
+  {
+    name: "Monitoring & Predicting Air Quality using Machine Learning — Mumbai Chapter",
+    issuer: "Omdena",
+    issued: "2023-05",
+    credentialId: "08424033334953",
+    url: "https://verified.sertifier.com/en/verify/08424033334953",
+    tone: "emerald",
+  },
+  {
+    name: "Research & Development Intern",
+    issuer: "Solvesustain",
+    issued: "2023-03",
+    tone: "violet",
+  },
+  {
+    name: "Python (Basic) Certificate",
+    issuer: "HackerRank",
+    issued: "2022-11",
+    credentialId: "989390DBC5CD",
+    url: "https://www.hackerrank.com/certificates/989390dbc5cd",
+    tone: "rose",
+  },
 ];
 
 export const education = [

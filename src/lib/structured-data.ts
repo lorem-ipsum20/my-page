@@ -5,7 +5,7 @@ import {
   SITE_URL,
   WEBSITE_ID,
 } from "@/lib/site";
-import { profile, projects, socials } from "@/lib/data";
+import { certifications, profile, projects, socials } from "@/lib/data";
 
 /**
  * The machine-readable identity of the site, as a single linked graph.
@@ -57,6 +57,18 @@ export function personNode() {
     sameAs: socials
       .filter((social) => social.icon !== "mail" && social.href.startsWith("http"))
       .map((social) => social.href),
+    // Credentials as first-class entities: search engines can show them with
+    // the issuer and verification URL instead of reading them as page text.
+    hasCredential: certifications.map((cert) => ({
+      "@type": "EducationalOccupationalCredential",
+      name: cert.name,
+      credentialCategory: "certificate",
+      identifier: cert.credentialId,
+      url: cert.url,
+      recognizedBy: organization(cert.issuer),
+      validFrom: cert.issued,
+      validUntil: cert.expires,
+    })),
     // The portfolio's projects, so they surface as this person's creations
     // rather than as unlinked text on the page.
     hasPart: projects.map((project) => ({

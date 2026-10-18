@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const ROLES = [
   "Full stack developer",
+  "AI full stack web developer",
   "Frontend developer",
   "Backend developer",
   "Software engineer",

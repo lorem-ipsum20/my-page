@@ -3,6 +3,7 @@ import { jsonLd, profilePageNode } from "@/lib/structured-data";
 import { BackToTop } from "@/components/back-to-top";
 import { MobileNav } from "@/components/mobile-nav";
 import { About } from "@/components/portfolio/about";
+import { Certifications } from "@/components/portfolio/certifications";
 import { Contact } from "@/components/portfolio/contact";
 import { Education } from "@/components/portfolio/education";
 import { Experience } from "@/components/portfolio/experience";
@@ -40,6 +41,7 @@ export default function Home() {
         <Projects />
         <Writing />
         <Skills />
+        <Certifications />
         <Education />
         <Contact />
       </main>

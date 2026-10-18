@@ -26,7 +26,7 @@ export const WEBSITE_ID = `${SITE_URL}/#website`;
  * to ignore the field, so this is a hand-set constant that is bumped only when
  * data.ts meaningfully changes.
  */
-export const CONTENT_UPDATED = new Date("2026-10-08");
+export const CONTENT_UPDATED = new Date("2026-10-18");
 
 /**
  * Google Search Console's HTML-tag verification token for this property.
