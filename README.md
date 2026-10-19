@@ -125,7 +125,10 @@ Everything lives in **`src/lib/data.ts`**:
 - `profile` — name, role, tagline, summaries, location, avatar, résumé link
 - `socials` — GitHub, LeetCode, LinkedIn, Medium, X, email
 - `experience` — UBS full-time + internship, with the résumé bullets
-- `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps
+- `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps. A project may carry an
+  `image` (a real screenshot of the running product, served from `public/projects/`) and a
+  `caseStudyUrl`. **Only screenshots of live products are used** — a project without one stays
+  text-only rather than showing a mockup, because the visual is the proof.
 - `posts` — the 8 Medium articles from `medium.com/@embed17`
 - `skillGroups`, `education`, `awards`, `interests`
 - `certifications` — every LinkedIn license and certification as a structured record
@@ -148,8 +151,30 @@ anonymously.
 
 ### Known gaps to fill in
 
-`projects[0].repoUrl` (DSA Lab) is `null` — the source is private, so the card shows its live
-demo link (codevisualizer.vercel.app) only. Add a public repo URL if one ever exists.
+`projects[0].repoUrl` (DSA Lab) is `null` — the source is private, so the card links to its live
+demo and case study instead. Add a public repo URL if one ever exists.
+
+## Case studies
+
+An in-depth write-up lives at `/projects/dsa-lab`, prerendered from
+`src/app/projects/dsa-lab/page.tsx`. It reads the project record out of `data.ts` for the
+screenshot, stack and links, and owns only the prose: the problem, the trace pipeline, the three
+hard parts, the tradeoffs and what comes next. The route declares its own canonical URL and a
+`TechArticle` node pointing at the `Person` the layout already publishes — a new case study needs
+the same two things, plus a row in `src/app/sitemap.ts`.
+
+Screenshots are real captures of the deployed apps, not mockups:
+
+```bash
+# 1440×900, same framing on every project card
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --disable-gpu --hide-scrollbars --window-size=1440,900 \
+  --virtual-time-budget=8000 --screenshot=public/projects/dsa-lab.png \
+  https://codevisualizer.vercel.app/
+```
+
+Re-capture when a product's landing page changes; the files are committed because Next optimizes
+them at request time and the card must never depend on the live site being up.
 
 ## SEO
 
@@ -234,6 +259,7 @@ src/
     layout.tsx                     # fonts, metadata, ThemeProvider
     page.tsx                       # composes every section
     globals.css                    # light/dark tokens, view-transition styles
+    projects/dsa-lab/page.tsx      # project case study (own canonical + TechArticle JSON-LD)
   components/
     site-header.tsx                # sticky nav, progress bar, scroll spy
     mobile-nav.tsx                 # bottom section dock on <md screens
@@ -262,5 +288,6 @@ src/
     tones.ts                       # colour-coding system
     utils.ts
 public/
-  AmanSinganamala-Resume.pdf
+  projects/                        # real screenshots of the deployed apps
+  aman-portrait.jpeg
 ```

@@ -153,6 +153,14 @@ export type Project = {
   stack: string[];
   demoUrl: string | null;
   repoUrl: string | null;
+  /**
+   * A real screenshot of the running product, served from /public. Projects
+   * without one stay text-only rather than showing a mockup that pretends to
+   * be the app — the visual is proof, so a fake one is worse than none.
+   */
+  image?: { src: string; alt: string; width: number; height: number };
+  /** In-depth write-up on this site, when one exists. */
+  caseStudyUrl?: string;
   accent: Tone;
 };
 
@@ -182,6 +190,13 @@ export const projects: Project[] = [
     ],
     demoUrl: "https://codevisualizer.vercel.app/",
     repoUrl: null,
+    image: {
+      src: "/projects/dsa-lab.png",
+      alt: "The DSA Lab home page: a Fibonacci recursion trace beside the code, with the call stack highlighted.",
+      width: 1440,
+      height: 900,
+    },
+    caseStudyUrl: "/projects/dsa-lab",
     accent: "emerald",
   },
   {
@@ -195,8 +210,14 @@ export const projects: Project[] = [
       "REST contracts consumed by a React front end with optimistic UI updates.",
     ],
     stack: ["Spring Boot", "Java", "React", "Microservices", "REST APIs"],
-    demoUrl: null,
+    demoUrl: "https://linkhub-one-phi.vercel.app/",
     repoUrl: "https://github.com/aman-singanamala/linkhub",
+    image: {
+      src: "/projects/linkhub.png",
+      alt: "The linkhub landing page: \"Capture the links that matter, and let your team reuse them.\"",
+      width: 1440,
+      height: 900,
+    },
     accent: "sky",
   },
   {
