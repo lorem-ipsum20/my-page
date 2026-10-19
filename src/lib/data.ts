@@ -82,12 +82,24 @@ export const socials: SocialLink[] = [
   },
 ];
 
+/**
+ * Every section the page actually renders, in reading order. The desktop
+ * header and the mobile dock both read this list, and `useActiveSection()`
+ * resolves the probe line against the same hrefs — so a new section is
+ * reachable and highlightable by adding one line here.
+ *
+ * "Certs" rather than "Certifications": eight full labels do not fit the
+ * header at the `md` breakpoint, and an abbreviation reads fine next to the
+ * section it jumps to.
+ */
 export const NAV_LINKS = [
   { label: "About", href: "#about" },
   { label: "Experience", href: "#experience" },
   { label: "Projects", href: "#projects" },
   { label: "Writing", href: "#writing" },
   { label: "Skills", href: "#skills" },
+  { label: "Certs", href: "#certifications" },
+  { label: "Education", href: "#education" },
   { label: "Contact", href: "#contact" },
 ];
 
@@ -532,4 +544,13 @@ export const awards: { title: string; org: string; detail: string; tone: Tone }[
 ];
 
 /** Section anchors shared by every design. */
-export const SECTIONS = ["about", "experience", "projects", "writing", "skills", "contact"] as const;
+export const SECTIONS = [
+  "about",
+  "experience",
+  "projects",
+  "writing",
+  "skills",
+  "certifications",
+  "education",
+  "contact",
+] as const;
