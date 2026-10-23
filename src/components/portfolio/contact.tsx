@@ -1,6 +1,7 @@
 import { ArrowUpRight, FileText } from "lucide-react";
 import { profile, socials } from "@/lib/data";
 import { socialIconMap } from "@/components/icons";
+import { Emphasize } from "@/components/emphasize";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/portfolio/section";
@@ -11,8 +12,10 @@ export function Contact() {
       <div className="space-y-7">
         <Reveal>
           <p className="max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-            Full-stack engineering, platform teams and applied LLM tooling. Fastest way to reach me is
-            email — I usually reply within a day.
+            <Emphasize
+              text="Full-stack engineering, platform teams and applied LLM tooling. Fastest way to reach me is email — I usually reply within a day."
+              phrases={["Full-stack engineering", "platform teams", "applied LLM tooling"]}
+            />
           </p>
         </Reveal>
 

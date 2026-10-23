@@ -1,6 +1,7 @@
 import { ArrowUpRight, FileText, MapPin } from "lucide-react";
 import { profile, socials } from "@/lib/data";
 import { socialIconMap } from "@/components/icons";
+import { Emphasize } from "@/components/emphasize";
 import { MascotCompanion } from "@/components/mascot/companion";
 import { Reveal } from "@/components/reveal";
 import { Typewriter } from "@/components/typewriter";
@@ -47,7 +48,12 @@ export function Hero() {
 
       <Reveal immediate delay={0.09}>
         <p className="mt-8 text-[2rem] leading-[1.12] font-medium tracking-tight text-balance sm:text-[2.6rem]">
-          I build scalable, secure web applications.
+          I build{" "}
+          <Emphasize
+            text="scalable, secure web applications"
+            phrases={["scalable", "secure"]}
+            emphasisClassName="font-semibold"
+          />.
         </p>
       </Reveal>
 
@@ -60,7 +66,19 @@ export function Hero() {
 
       <Reveal immediate delay={0.24}>
         <p className="mt-7 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-          {profile.summary}
+          <Emphasize
+            text={profile.summary}
+            phrases={[
+              "React.js",
+              "Spring Boot",
+              "JavaScript",
+              "Java",
+              "TypeScript",
+              "REST APIs",
+              "LLMs",
+              "LangChain",
+            ]}
+          />
         </p>
       </Reveal>
 

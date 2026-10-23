@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { interests, profile } from "@/lib/data";
+import { Emphasize } from "@/components/emphasize";
 import { Reveal } from "@/components/reveal";
 import { Tag } from "@/components/tag";
 import { Section } from "@/components/portfolio/section";
@@ -10,7 +11,15 @@ export function About() {
       <div className="space-y-4">
         <Reveal>
           <p className="text-[15px] leading-relaxed text-muted-foreground">
-            {profile.summarySecondary}
+            <Emphasize
+              text={profile.summarySecondary}
+              phrases={[
+                "authentication systems",
+                "role-based access control (RBAC)",
+                "microservices architecture",
+                "Microsoft Azure",
+              ]}
+            />
           </p>
         </Reveal>
         <Reveal delay={0.06}>
