@@ -1,5 +1,4 @@
 import {
-  Download,
   ExternalLink,
   Mail,
   MapPin,
@@ -19,7 +18,6 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { formatMonth } from "@/lib/utils";
 import Link from "next/link";
 import { socialIconMap } from "@/components/icons";
-import { Button } from "@/components/ui/button";
 import { PrintButton } from "@/components/resume/print-button";
 
 const resumeTitle = `Résumé — ${profile.name}`;
@@ -104,15 +102,6 @@ export default function ResumePage() {
           </Link>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              nativeButton={false}
-              className="rounded-full"
-              render={<a href={profile.resumeUrl} target="_blank" rel="noreferrer" />}
-            >
-              <Download className="size-3.5" />
-              PDF
-            </Button>
             <PrintButton />
           </div>
         </div>
@@ -326,15 +315,7 @@ export default function ResumePage() {
         </ResumeSection>
 
         <footer className="mt-8 border-t border-border pt-4 text-[10.5px] text-muted-foreground/70">
-          Rendered live from the portfolio&apos;s own data · PDF version always current at{" "}
-          <a
-            href={profile.resumeUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
-            the release link
-          </a>
+          Rendered live from the portfolio&apos;s own data
         </footer>
       </article>
     </div>

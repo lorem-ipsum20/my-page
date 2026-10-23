@@ -122,7 +122,7 @@ connected yet. Model IDs live in `src/app/api/chat/route.ts` if you ever want to
 
 Everything lives in **`src/lib/data.ts`**:
 
-- `profile` — name, role, tagline, summaries, location, avatar, résumé link
+- `profile` — name, role, tagline, summaries, location, avatar
 - `socials` — GitHub, LeetCode, LinkedIn, Medium, X, email
 - `experience` — UBS full-time + internship, with the résumé bullets
 - `projects` — DSA Lab, linkhub, Uber ETL Pipeline, Streamlit Apps. A project may carry an
@@ -135,19 +135,12 @@ Everything lives in **`src/lib/data.ts`**:
   (`issuer`, `issued` / `expires` as ISO months, `credentialId`, verification `url`), rendered
   on the portfolio, the résumé, the JSON-LD graph and in Nova's knowledge base from one list
 
-### Updating the résumé (no redeploy)
+### The résumé
 
-The PDF is **not** in the repo. `profile.resumeUrl` points at the GitHub Releases
-"latest download" URL, which never changes but always serves the newest asset on the
-`resume` release:
-
-> https://github.com/lorem-ipsum20/my-page/releases/latest/download/AmanSinganamala-Resume.pdf
-
-To publish a new résumé: open the [resume release](https://github.com/lorem-ipsum20/my-page/releases/tag/resume)
-on GitHub, delete the old asset, upload the new PDF **with the exact same filename**, save.
-The site picks it up on the next download — no commit, no deploy, doable from a phone.
-The release must stay the latest one, and the repo must stay public for the link to work
-anonymously.
+There is no downloadable PDF: the on-site résumé at `/resume` is the single version,
+rendered live from `data.ts`. Updating it means editing the data and redeploying.
+Browsers can still print it to PDF from the page's Print button — the print stylesheet
+in `globals.css` forces a plain black-on-white sheet whatever the theme is.
 
 ### Known gaps to fill in
 

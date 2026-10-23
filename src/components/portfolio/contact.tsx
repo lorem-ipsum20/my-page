@@ -1,4 +1,4 @@
-import { ArrowUpRight, Download, FileText } from "lucide-react";
+import { ArrowUpRight, FileText } from "lucide-react";
 import { profile, socials } from "@/lib/data";
 import { socialIconMap } from "@/components/icons";
 import { Reveal } from "@/components/reveal";
@@ -34,14 +34,6 @@ export function Contact() {
 
         <Reveal delay={0.1}>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              nativeButton={false}
-              className="rounded-full transition-transform duration-200 hover:-translate-y-0.5"
-              render={<a href={profile.resumeUrl} target="_blank" rel="noreferrer" />}
-            >
-              <Download className="size-3.5" />
-              Download résumé
-            </Button>
             <Button
               variant="outline"
               nativeButton={false}
