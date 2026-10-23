@@ -33,7 +33,6 @@ export function personNode() {
     jobTitle: profile.role,
     description: profile.summary,
     email: `mailto:${profile.email}`,
-    telephone: profile.phone,
     worksFor: organization("UBS"),
     address: {
       "@type": "PostalAddress",

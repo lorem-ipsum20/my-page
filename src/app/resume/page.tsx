@@ -3,7 +3,6 @@ import {
   ExternalLink,
   Mail,
   MapPin,
-  Phone,
 } from "lucide-react";
 import type { Metadata } from "next";
 import {
@@ -144,15 +143,6 @@ export default function ResumePage() {
                 <Mail className="size-3" />
                 <a href={`mailto:${profile.email}`} className="hover:text-foreground">
                   {profile.email}
-                </a>
-              </p>
-              <p className="inline-flex items-center gap-1.5">
-                <Phone className="size-3" />
-                <a
-                  href={`tel:${profile.phone.replace(/\s/g, "")}`}
-                  className="hover:text-foreground"
-                >
-                  {profile.phone}
                 </a>
               </p>
             </div>

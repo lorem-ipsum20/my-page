@@ -15,7 +15,6 @@ export const profile = {
   location: "Pune, India",
   timezone: "IST (UTC+5:30)",
   email: "amansinganamala@gmail.com",
-  phone: "+91 81791 00748",
   avatar: "https://github.com/aman-singanamala.png?size=460",
   // Served from the GitHub Releases "latest download" URL: the address never
   // changes, but it always returns the newest asset on the `resume` release —
@@ -40,7 +39,7 @@ export type SocialLink = {
   label: string;
   handle: string;
   href: string;
-  icon: "github" | "linkedin" | "leetcode" | "medium" | "mail" | "twitter" | "phone";
+  icon: "github" | "linkedin" | "leetcode" | "medium" | "mail" | "twitter";
 };
 
 export const socials: SocialLink[] = [

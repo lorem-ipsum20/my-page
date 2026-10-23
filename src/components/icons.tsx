@@ -66,5 +66,4 @@ export const socialIconMap = {
   medium: MediumIcon,
   twitter: XIcon,
   mail: MailIcon,
-  phone: MailIcon,
 } as const;
