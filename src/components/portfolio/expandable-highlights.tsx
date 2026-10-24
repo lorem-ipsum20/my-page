@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { Emphasize } from "@/components/emphasize";
 import { cn } from "@/lib/utils";
 
-function Highlight({ point }: { point: string }) {
+function Highlight({
+  point,
+  phrases,
+}: {
+  point: string;
+  phrases: readonly string[];
+}) {
   return (
     <li className="group flex gap-3 text-[14px] leading-relaxed">
       <span
@@ -12,7 +19,7 @@ function Highlight({ point }: { point: string }) {
         className="mt-[0.6rem] size-1 shrink-0 rounded-full bg-brand/50 transition-all duration-300 group-hover:scale-150 group-hover:bg-brand"
       />
       <span className="text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
-        {point}
+        <Emphasize text={point} phrases={phrases} />
       </span>
     </li>
   );
@@ -26,9 +33,12 @@ function Highlight({ point }: { point: string }) {
 export function ExpandableHighlights({
   items,
   initial = 4,
+  phrases = [],
 }: {
   items: string[];
   initial?: number;
+  /** Key phrases to bold inside each bullet; empty keeps the plain render. */
+  phrases?: readonly string[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const preview = items.slice(0, initial);
@@ -38,7 +48,7 @@ export function ExpandableHighlights({
     <div>
       <ul className="space-y-2.5">
         {preview.map((point) => (
-          <Highlight key={point} point={point} />
+          <Highlight key={point} point={point} phrases={phrases} />
         ))}
       </ul>
 
@@ -52,7 +62,7 @@ export function ExpandableHighlights({
           >
             <ul className="space-y-2.5 overflow-hidden pt-2.5">
               {rest.map((point) => (
-                <Highlight key={point} point={point} />
+                <Highlight key={point} point={point} phrases={phrases} />
               ))}
             </ul>
           </div>

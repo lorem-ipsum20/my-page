@@ -6,6 +6,7 @@ import { profile, projects } from "@/lib/data";
 import { PERSON_ID, SITE_NAME, SITE_URL, WEBSITE_ID } from "@/lib/site";
 import { jsonLd } from "@/lib/structured-data";
 import { toneForTech } from "@/lib/tones";
+import { Emphasize } from "@/components/emphasize";
 import { RevealRule } from "@/components/reveal";
 import { Tag } from "@/components/tag";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -161,6 +162,40 @@ const NEXT_STEPS = [
   "A server execution path for languages Pyodide cannot carry.",
 ] as const;
 
+/**
+ * Technologies worth landing on while scanning the write-up. Matched
+ * phrase-exact and longest-first; where a paragraph carries inline <code>
+ * chips instead, the chip already is the emphasis and the surrounding text
+ * stays plain.
+ */
+const CASE_TECH = [
+  "Azure Kubernetes Service (AKS)",
+  "Google sign-in",
+  "Microsoft Graph API",
+  "importScripts",
+  "WebSockets",
+  "CodeMirror 6",
+  "Google PKCE",
+  "HS256 JWT",
+  "httpOnly cookie",
+  "JavaScript",
+  "TypeScript",
+  "sys.settrace",
+  "Web Worker",
+  "WebAssembly",
+  "Postgres",
+  "Pyodide",
+  "CPython",
+  "Python",
+  "untrusted input",
+  "client-side trace pipeline",
+  "AST",
+  "fetch",
+  "WASM",
+  "XHR",
+  "acorn",
+] as const;
+
 function Section({
   index,
   label,
@@ -232,9 +267,10 @@ export default function DsaLabCaseStudy() {
             </h1>
 
             <p className="mt-4 max-w-xl text-[1.05rem] leading-relaxed text-muted-foreground sm:text-[1.15rem]">
-              A code visualizer that shows what an algorithm is doing, one state
-              at a time — built as a client-side trace pipeline, not a gallery of
-              finished answers.
+              <Emphasize
+                text="A code visualizer that shows what an algorithm is doing, one state at a time — built as a client-side trace pipeline, not a gallery of finished answers."
+                phrases={["client-side trace pipeline"]}
+              />
             </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-2">
@@ -354,7 +390,9 @@ export default function DsaLabCaseStudy() {
                     aria-hidden
                     className="mt-2.5 h-px w-3 shrink-0 bg-border"
                   />
-                  <span className="text-muted-foreground">{item}</span>
+                  <span className="text-muted-foreground">
+                    <Emphasize text={item} phrases={CASE_TECH} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -362,10 +400,10 @@ export default function DsaLabCaseStudy() {
 
           <Section index="03" label="Architecture">
             <p className="text-muted-foreground">
-              One trace is a pipeline, and each stage has exactly one job. The
-              important boundary is between stage three and stage five: everything
-              the worker emits is treated as untrusted input until it has been
-              normalized.
+              <Emphasize
+                text="One trace is a pipeline, and each stage has exactly one job. The important boundary is between stage three and stage five: everything the worker emits is treated as untrusted input until it has been normalized."
+                phrases={["untrusted input"]}
+              />
             </p>
 
             <ol className="mt-6">
@@ -385,7 +423,7 @@ export default function DsaLabCaseStudy() {
                   <div className={index < PIPELINE.length - 1 ? "pb-5" : ""}>
                     <p className="text-[14px] font-medium">{stage.title}</p>
                     <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-                      {stage.detail}
+                      <Emphasize text={stage.detail} phrases={CASE_TECH} />
                     </p>
                   </div>
                 </li>
@@ -411,12 +449,10 @@ export default function DsaLabCaseStudy() {
               Instrumentation, not guessing
             </h3>
             <p className="text-muted-foreground">
-              There is no supported way to read a function’s local variables
-              from outside it. So the tracer does not observe the program — it
-              rewrites it. The source is parsed into an AST and capture calls
-              are spliced in at the points where state changes: loop
-              conditions, assignments, returns, map and array access, function
-              entry.
+              <Emphasize
+                text="There is no supported way to read a function’s local variables from outside it. So the tracer does not observe the program — it rewrites it. The source is parsed into an AST and capture calls are spliced in at the points where state changes: loop conditions, assignments, returns, map and array access, function entry."
+                phrases={CASE_TECH}
+              />
             </p>
             <p className="text-muted-foreground">
               The awkward part is that the rewrite has to preserve the original
@@ -444,13 +480,10 @@ export default function DsaLabCaseStudy() {
               A sandbox that cannot phone home
             </h3>
             <p className="text-muted-foreground">
-              Pasted code is arbitrary code, so it never runs on the main
-              thread. A Blob-constructed Web Worker executes the instrumented
-              source with networking APIs removed entirely — no fetch, no
-              XHR, no WebSockets, no importScripts. History is protected too:
-              every snapshot is deep-cloned at emit time with a cycle-aware
-              clone, so a later mutation cannot rewrite an earlier step, and a
-              cyclic linked list serialises as a marker instead of a hang.
+              <Emphasize
+                text="Pasted code is arbitrary code, so it never runs on the main thread. A Blob-constructed Web Worker executes the instrumented source with networking APIs removed entirely — no fetch, no XHR, no WebSockets, no importScripts. History is protected too: every snapshot is deep-cloned at emit time with a cycle-aware clone, so a later mutation cannot rewrite an earlier step, and a cyclic linked list serialises as a marker instead of a hang."
+                phrases={CASE_TECH}
+              />
             </p>
             <p className="text-muted-foreground">
               Traces are deduplicated and capped at 3,000 steps, with an
@@ -480,12 +513,10 @@ export default function DsaLabCaseStudy() {
               of popping.
             </p>
             <p className="text-muted-foreground">
-              The plain-English explanation of a step is derived from the step
-              itself — no model call. The model is used where it is actually
-              needed: translating a solution between languages (cached in
-              Postgres, rate-limited per visitor) and answering questions about
-              the current run, with the step supplied as context rather than
-              asking the model to remember it.
+              <Emphasize
+                text="The plain-English explanation of a step is derived from the step itself — no model call. The model is used where it is actually needed: translating a solution between languages (cached in Postgres, rate-limited per visitor) and answering questions about the current run, with the step supplied as context rather than asking the model to remember it."
+                phrases={CASE_TECH}
+              />
             </p>
           </Section>
 
@@ -496,9 +527,9 @@ export default function DsaLabCaseStudy() {
                   <dt className="text-[14px] font-medium">{item.decision}</dt>
                   <dd className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
                     <span className="text-foreground/80">Gain:</span>{" "}
-                    {item.wins}{" "}
+                    <Emphasize text={item.wins} phrases={CASE_TECH} />{" "}
                     <span className="text-foreground/80">Cost:</span>{" "}
-                    {item.costs}
+                    <Emphasize text={item.costs} phrases={CASE_TECH} />
                   </dd>
                 </div>
               ))}
@@ -513,7 +544,9 @@ export default function DsaLabCaseStudy() {
                     aria-hidden
                     className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/60"
                   />
-                  <span className="text-muted-foreground">{item}</span>
+                  <span className="text-muted-foreground">
+                    <Emphasize text={item} phrases={CASE_TECH} />
+                  </span>
                 </li>
               ))}
             </ul>

@@ -5,6 +5,30 @@ import { Tag } from "@/components/tag";
 import { ExpandableHighlights } from "@/components/portfolio/expandable-highlights";
 import { Section } from "@/components/portfolio/section";
 
+/**
+ * Technologies a recruiter scanning the bullets should land on. Matched
+ * phrase-exact and longest-first, so “Azure Kubernetes Service (AKS)” wins
+ * over the bare “Kubernetes” sitting inside it.
+ */
+const BULLET_PHRASES = [
+  "Azure Kubernetes Service (AKS)",
+  "Azure Active Directory",
+  "Microsoft Graph API",
+  "Azure Cloud",
+  "Spring Boot",
+  "React.js",
+  "React",
+  "PostgreSQL",
+  "REST APIs",
+  "Kubernetes",
+  "Vitest",
+  "Ansible",
+  "pgAdmin",
+  "Docker",
+  "Axios",
+  "RBAC",
+] as const;
+
 export function Experience() {
   return (
     <Section
@@ -36,7 +60,11 @@ export function Experience() {
             </Reveal>
 
             <Reveal delay={0.1} className="mt-5">
-              <ExpandableHighlights items={job.highlights} initial={4} />
+              <ExpandableHighlights
+                items={job.highlights}
+                initial={4}
+                phrases={BULLET_PHRASES}
+              />
             </Reveal>
 
             <Reveal delay={0.14} className="mt-6 flex flex-wrap gap-1.5">
