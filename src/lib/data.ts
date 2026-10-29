@@ -435,6 +435,14 @@ export type Certification = {
 /** Licenses & certifications, newest first — mirrors the LinkedIn profile. */
 export const certifications: Certification[] = [
   {
+    name: "UBS Certified Engineer (Gold)",
+    issuer: "UBS",
+    issued: "2026-10",
+    credentialId: "241e7f1d-6d27-459e-9ad7-03cbd9a6623d",
+    url: "https://www.credly.com/badges/241e7f1d-6d27-459e-9ad7-03cbd9a6623d",
+    tone: "amber",
+  },
+  {
     name: "AI Citizen",
     issuer: "UBS",
     issued: "2026-04",
