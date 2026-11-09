@@ -46,8 +46,8 @@ export const socials: SocialLink[] = [
   },
   {
     label: "LeetCode",
-    handle: "aman2278",
-    href: "https://leetcode.com/u/aman2278/",
+    handle: "aman3103",
+    href: "https://leetcode.com/u/aman3103/",
     icon: "leetcode",
   },
   {
